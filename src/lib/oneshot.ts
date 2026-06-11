@@ -25,7 +25,8 @@ const RELAYER_URL = process.env.ONESHOT_RELAYER_URL ?? "https://relayer.1shotapi
 
 let _id = 0;
 
-async function rpc<T>(method: string, params: unknown[]): Promise<T> {
+// JSON-RPC params may be an array (getCapabilities) or an object (getFeeData).
+async function rpc<T>(method: string, params: unknown): Promise<T> {
   const res = await fetch(RELAYER_URL, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -39,7 +40,10 @@ async function rpc<T>(method: string, params: unknown[]): Promise<T> {
 
 /** Per-chain capabilities (verified live shape, 2026-06-11). */
 export type ChainCapabilities = {
+  /** Fee payment recipient — include a stablecoin transfer here in the bundle. */
   feeCollector: `0x${string}`;
+  /** The delegation `to` (delegate) address. Delegations MUST target this or
+   *  redemption fails. The session account redelegates to it for the 1Shot path. */
   targetAddress: `0x${string}`;
   tokens: { address: `0x${string}`; symbol: string; decimals: string }[];
 };
@@ -49,9 +53,12 @@ export type RelayerCapabilities = Record<string, ChainCapabilities>;
 
 export type FeeData = {
   gasPrice: string;
-  rate: string;
+  rate: number;
   minFee: string;
   expiry: number;
+  feeCollector: `0x${string}`;
+  targetAddress: `0x${string}`;
+  token?: { address: `0x${string}`; symbol: string; decimals: number; name?: string };
   /** Opaque signed quote to pass back into send7710Transaction. */
   context: string;
 };
@@ -67,62 +74,84 @@ export async function getChainCapabilities(chainId: number): Promise<ChainCapabi
   return caps[String(chainId)];
 }
 
-/** Quote the stablecoin fee. feeAmount owed = max(convertedFee, minFee). */
+/** Pre-bundle rough quote. feeAmount owed = max(convertedFee, minFee).
+ *  params is an object (not array) with chainId as a string. */
 export function getFeeData(chainId: number, token: `0x${string}`): Promise<FeeData> {
-  return rpc<FeeData>("relayer_getFeeData", [{ chainId, token }]);
+  return rpc<FeeData>("relayer_getFeeData", { chainId: String(chainId), token });
 }
 
 /**
- * One execution the delegate wants to run on the user's behalf (e.g. an x402
- * USDC transfer, or attestAndSplit). Encoded calldata + target.
+ * One execution to run under the delegation (e.g. the fee transfer to
+ * feeCollector, or attestAndSplit). Field is `target` (not `to`) per the relayer.
  */
-export type Execution = { to: `0x${string}`; value?: `0x${string}`; data: `0x${string}` };
+export type Execution7710 = { target: `0x${string}`; value: string; data: `0x${string}` };
+
+/** A signed ERC-7710 delegation (serialize bigints/bytes to hex before sending). */
+export type Delegation7710 = {
+  delegate: `0x${string}`; // = targetAddress from getCapabilities
+  delegator: `0x${string}`; // = signer's smart account
+  authority: string; // bytes32; "0x000…0" for root
+  caveats: { enforcer: `0x${string}`; terms: string; args: string }[];
+  salt: string; // 32-byte hex, fresh per delegation
+  signature: string; // from smartAccount.signDelegation
+};
+
+/** One delegation chain + the executions it authorizes. */
+export type DelegatedTransaction7710 = {
+  permissionContext: Delegation7710[]; // chain length 1 for direct delegation
+  executions: Execution7710[];
+};
+
+export type AuthorizationListEntry = {
+  address: `0x${string}`;
+  chainId: number | string;
+  nonce: number | string;
+  r: `0x${string}`;
+  s: `0x${string}`;
+  yParity: number | string;
+};
 
 /**
- * Submit a 7710 redeem bundle through the relayer.
+ * Submit a 7710 redeem bundle. Params is an OBJECT (not array). All transactions
+ * are merged into one on-chain redeemDelegations batch.
  *
  * GOTCHAS (verified):
- *  - Browser wallets (ERC-7715) handle the EIP-7702 upgrade automatically → DO
- *    NOT include `authorizationList`. Local/script signers include ONE entry,
- *    first-use only.
- *  - Use a fresh delegation salt per delegation to avoid replay collisions.
- *  - Serialize bigint/bytes to JSON-safe hex before sending.
+ *  - Browser wallets (ERC-7715) handle the EIP-7702 upgrade automatically → omit
+ *    `authorizationList`. Local/script signers include ONE entry, first-use only.
+ *  - Fresh delegation salt per delegation; bigint/bytes → hex.
+ *  - Self-sponsored: one delegation scoping feeAmount + workAmount, two
+ *    executions [feeTransfer→feeCollector, workCall]. Always pass `context` from estimate.
  */
-export type Send7710Params = {
-  chainId: number;
-  /** ERC-7710 permission context (from the granted ERC-7715 permission). */
-  permissionContext: `0x${string}`;
-  delegationManager: `0x${string}`;
-  /** Calls to execute under the delegation. */
-  executions: Execution[];
-  /** Stablecoin used to pay gas. */
-  token: `0x${string}`;
-  /** Signed quote from relayer_estimate7710Transaction / getFeeData. */
-  context?: string;
-  /** Webhook for status (Ed25519-signed against relayer JWKS). */
+export type Send7710TransactionParams = {
+  chainId: string;
+  transactions: DelegatedTransaction7710[];
+  authorizationList?: AuthorizationListEntry[];
+  context?: string; // signed price-lock from estimate
+  taskId?: `0x${string}`;
   destinationUrl?: string;
-  taskId?: string;
   memo?: string;
-  /** Local-signer only, first-use only. Omit for browser-wallet 7702 upgrades. */
-  authorizationList?: unknown[];
 };
 
 /** The relayer returns a TaskId used to track the bundle. */
 export type Send7710Result = { TaskId: string };
 
-export function send7710Transaction(params: Send7710Params): Promise<Send7710Result> {
-  return rpc<Send7710Result>("relayer_send7710Transaction", [params]);
+export function send7710Transaction(params: Send7710TransactionParams): Promise<Send7710Result> {
+  return rpc<Send7710Result>("relayer_send7710Transaction", params);
 }
 
 export type EstimateResult = {
   success: boolean;
-  requiredPaymentAmount: string;
-  gasUsed: Record<string, string>;
-  context: string;
+  error?: string;
+  requiredPaymentAmount?: string;
+  gasUsed?: Record<string, string>;
+  context?: string;
 };
 
-export function estimate7710Transaction(params: Omit<Send7710Params, "context">): Promise<EstimateResult> {
-  return rpc<EstimateResult>("relayer_estimate7710Transaction", [params]);
+/** Same params as send, minus `context`. Call immediately before send. */
+export function estimate7710Transaction(
+  params: Omit<Send7710TransactionParams, "context">,
+): Promise<EstimateResult> {
+  return rpc<EstimateResult>("relayer_estimate7710Transaction", params);
 }
 
 export type RelayerStatusValue = "Pending" | "Submitted" | "Confirmed" | "Rejected" | "Reverted";

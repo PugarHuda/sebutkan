@@ -12,6 +12,12 @@ type ResearchState =
   | { status: "done"; result: ResearchResult }
   | { status: "error"; message: string };
 
+type SettleState =
+  | { status: "idle" }
+  | { status: "settling" }
+  | { status: "done"; result: unknown }
+  | { status: "error"; message: string };
+
 // Dev session account (the agent's account that redeems delegations).
 // In production this is the Researcher agent's smart account.
 const SESSION_ACCOUNT =
@@ -36,6 +42,32 @@ export default function ResearchPage() {
 
   const [query, setQuery] = useState("");
   const [research, setResearch] = useState<ResearchState>({ status: "idle" });
+  const [settle, setSettle] = useState<SettleState>({ status: "idle" });
+
+  async function handleSettle() {
+    if (research.status !== "done") return;
+    setSettle({ status: "settling" });
+    try {
+      const ledger =
+        (process.env.NEXT_PUBLIC_ATTRIBUTION_LEDGER as string) ??
+        "0x0000000000000000000000000000000000000000";
+      const res = await fetch("/api/settle", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          query: research.result.query,
+          amountUSDC6: "500000", // 0.5 USDC demo spend split across authors
+          payouts: research.result.payouts,
+          ledger,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+      setSettle({ status: "done", result: json });
+    } catch (e) {
+      setSettle({ status: "error", message: e instanceof Error ? e.message : String(e) });
+    }
+  }
 
   async function handleResearch() {
     if (!query.trim()) return;
@@ -252,6 +284,30 @@ export default function ResearchPage() {
                   ))}
                 </tbody>
               </table>
+
+              <div className="mt-4 flex items-center gap-3">
+                <button
+                  onClick={handleSettle}
+                  disabled={settle.status === "settling"}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white disabled:opacity-40"
+                >
+                  {settle.status === "settling" ? "Settling…" : "Settle & pay authors (0.5 USDC)"}
+                </button>
+                <span className="text-[11px] text-neutral-400">
+                  redeems the ERC-7710 delegation → attestAndSplit → relayed via 1Shot
+                </span>
+              </div>
+
+              {settle.status === "done" ? (
+                <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-neutral-100 p-3 text-[11px] dark:bg-neutral-900">
+                  {JSON.stringify(settle.result, null, 2)}
+                </pre>
+              ) : null}
+              {settle.status === "error" ? (
+                <p className="mt-3 rounded-md bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40">
+                  {settle.message}
+                </p>
+              ) : null}
             </div>
           </div>
         ) : null}
