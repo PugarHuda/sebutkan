@@ -56,6 +56,11 @@ Next.js app ── /research
 - **x402** — HTTP-402 pay-per-request, settled via ERC-7710 delegation
 - Next.js · viem · wagmi · Foundry (Solidity 0.8.24)
 
+## Docs
+
+- **[SETUP.md](./SETUP.md)** — run locally + free testnet demo (Flask, faucets, deploy)
+- **[DEMO.md](./DEMO.md)** — 3.5-min demo video script + per-track judge checklist
+
 ## Status
 
 🚧 In active development during the hackathon. Core delegation layer
