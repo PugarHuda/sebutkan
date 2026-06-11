@@ -10,6 +10,10 @@ Built for the **MetaMask Smart Accounts Kit × 1Shot API × Venice AI Dev Cook-O
 
 **🔗 Live demo: https://sebutkan.vercel.app** · **Repo: https://github.com/PugarHuda/sebutkan**
 
+**On-chain:** `AttributionLedger` deployed to **Ethereum Sepolia** —
+[`0xDea6Da93265871d828B20cace2BADd5F5e70209d`](https://sepolia.etherscan.io/address/0xDea6Da93265871d828B20cace2BADd5F5e70209d)
+(USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet).
+
 ---
 
 ## Why this is different
