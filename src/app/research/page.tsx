@@ -5,6 +5,7 @@ import { useAccount, useConnect, useDisconnect, useWalletClient } from "wagmi";
 import { requestBudgetPermission, type BudgetParams } from "@/lib/permissions";
 import { PERMISSION_CHAIN } from "@/lib/chains";
 import type { ResearchResult } from "@/lib/agent";
+import { AGENT_MESH, narrowedFor } from "@/lib/agents";
 
 type ResearchState =
   | { status: "idle" }
@@ -203,6 +204,55 @@ export default function ResearchPage() {
             {grant.message}
           </p>
         ) : null}
+      </section>
+
+      {/* A2A delegation tree */}
+      <section className="mb-8 rounded-xl border border-neutral-200 p-5 dark:border-neutral-800">
+        <h2 className="text-sm font-medium">Agent mesh — redelegation (A2A)</h2>
+        <p className="mt-1 text-xs text-neutral-500">
+          The Researcher subcontracts the Summarizer by redelegating a strictly
+          narrower slice. Authority only narrows — caveats can tighten, never loosen.
+        </p>
+        <ol className="mt-4 space-y-2">
+          {AGENT_MESH.map((role, i) => {
+            const now = Math.floor(Date.now() / 1000);
+            const { budgetUSDC, expiryUnix } = narrowedFor(
+              role,
+              perDay,
+              now + expiryHours * 3600,
+              now,
+            );
+            const hours = Math.max(0, Math.round((expiryUnix - now) / 3600));
+            return (
+              <li
+                key={role.id}
+                className="rounded-lg border border-neutral-100 p-3 dark:border-neutral-800"
+                style={{ marginLeft: `${i * 20}px` }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium">
+                    {i > 0 ? "↳ " : ""}
+                    {role.label}
+                  </span>
+                  <span className="font-mono text-[11px] text-emerald-600">
+                    ≤ {budgetUSDC.toFixed(2)} USDC · {hours}h
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-neutral-500">{role.blurb}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {role.caveats.map((c) => (
+                    <span
+                      key={c}
+                      className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 dark:bg-neutral-900"
+                    >
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
       </section>
 
       {/* 3. Research */}

@@ -28,6 +28,7 @@ import {
   type PermissionRequestParameter,
   type GetGrantedExecutionPermissionsResult,
 } from "@metamask/smart-accounts-kit/actions";
+import { getSmartAccountsEnvironment } from "@metamask/smart-accounts-kit";
 import { PERMISSION_CHAIN, USDC, usdc } from "./chains";
 
 export type BudgetParams = {
@@ -113,17 +114,27 @@ export async function redeemWithDelegation(
 
 /**
  * A2A redelegation: the Researcher redelegates a (narrowed) slice of its granted
- * permission context to the Summarizer agent. Authority only narrows — the
- * Summarizer can never redeem more than the Researcher was granted.
+ * permission to the Summarizer. Authority only narrows — added caveats can only
+ * tighten, never loosen, so the Summarizer can never redeem more than the
+ * Researcher holds. Returns the new (narrowed) permission context.
  */
 export async function redelegateTo(
   researcherWallet: WalletClient,
-  args: { to: `0x${string}`; permissionsContext: `0x${string}`; delegationManager: `0x${string}` },
+  args: {
+    to: `0x${string}`;
+    permissionContext: unknown;
+    chainId?: number;
+    /** Narrowing caveats (e.g. a smaller cap, shorter expiry, scoped target). */
+    caveats?: unknown;
+  },
 ): Promise<unknown> {
-  const client = researcherWallet.extend(() => ({
-    redelegatePermissionContext: redelegatePermissionContextAction,
-  }));
-  // Exact call shape is finalized when wiring the A2A UI (Day 3).
-  return (client as unknown as { redelegatePermissionContext: typeof redelegatePermissionContextAction })
-    .redelegatePermissionContext;
+  const chainId = args.chainId ?? PERMISSION_CHAIN.id;
+  const environment = getSmartAccountsEnvironment(chainId);
+  return redelegatePermissionContextAction(researcherWallet as never, {
+    to: args.to,
+    permissionContext: args.permissionContext as never,
+    environment,
+    chainId,
+    caveats: args.caveats as never,
+  });
 }
