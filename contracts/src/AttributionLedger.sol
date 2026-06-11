@@ -38,6 +38,7 @@ contract AttributionLedger {
     error NoCitations();
     error BadWeightSum(uint256 got);
     error ZeroAuthor();
+    error TransferFailed();
 
     constructor(address _usdc) {
         usdc = IERC20(_usdc);
@@ -58,7 +59,7 @@ contract AttributionLedger {
         if (weightSum != 10_000) revert BadWeightSum(weightSum);
 
         attested[queryId] = true;
-        usdc.transferFrom(msg.sender, address(this), amount);
+        if (!usdc.transferFrom(msg.sender, address(this), amount)) revert TransferFailed();
 
         uint256 distributed;
         for (uint256 i; i < n; ++i) {
@@ -67,7 +68,7 @@ contract AttributionLedger {
                 i == n - 1 ? amount - distributed : (amount * cites[i].weightBps) / 10_000;
             distributed += share;
             authorEarnings[cites[i].author] += share;
-            usdc.transfer(cites[i].author, share);
+            if (!usdc.transfer(cites[i].author, share)) revert TransferFailed();
             emit AuthorPaid(queryId, cites[i].author, share, cites[i].weightBps);
         }
 
