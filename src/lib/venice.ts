@@ -51,13 +51,19 @@ export async function veniceChat(opts: {
   temperature?: number;
 }): Promise<ChatResult> {
   const body: Record<string, unknown> = {
-    model: opts.model ?? process.env.VENICE_CHAT_MODEL ?? "llama-3.3-70b",
+    // venice-uncensored is Venice's own private, uncensored model — the
+    // capability you can't get on OpenAI, and the core of our Venice-track story.
+    model: opts.model ?? process.env.VENICE_CHAT_MODEL ?? "venice-uncensored",
     messages: opts.messages,
     temperature: opts.temperature ?? 0.4,
   };
   if (opts.webSearch) {
-    // Venice-specific: enable grounded web search with citations.
-    body.venice_parameters = { enable_web_search: "on", include_search_results_in_stream: false };
+    // Venice-specific: server-side web search + inline source citations.
+    body.venice_parameters = {
+      enable_web_search: "on",
+      enable_web_citations: true,
+      include_search_results_in_stream: false,
+    };
   }
 
   const res = await fetch(`${VENICE_BASE}/chat/completions`, {
@@ -96,7 +102,7 @@ export async function veniceImage(prompt: string, model?: string): Promise<strin
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${apiKey()}` },
     body: JSON.stringify({
-      model: model ?? process.env.VENICE_IMAGE_MODEL ?? "venice-sd35",
+      model: model ?? process.env.VENICE_IMAGE_MODEL ?? "z-image-turbo",
       prompt,
       width: 1024,
       height: 1024,
