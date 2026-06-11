@@ -238,6 +238,15 @@ export default function ResearchPage() {
 
         {research.status === "done" ? (
           <div className="mt-5 space-y-5">
+            <span
+              className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                research.result.venice === "live"
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                  : "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+              }`}
+            >
+              {research.result.venice === "live" ? "Venice live" : "Venice fallback (dev)"}
+            </span>
             <article className="whitespace-pre-wrap text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
               {research.result.synthesis}
             </article>

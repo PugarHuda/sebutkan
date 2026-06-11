@@ -23,7 +23,8 @@ export type ResearchResult = {
   webCitations: { title?: string; url?: string }[];
   works: Work[];
   payouts: CitationPayout[];
-  /** keccak-friendly id for on-chain attestation (set by the caller/route). */
+  /** "live" = Venice synthesized; "fallback" = dev mode (no Venice credit). */
+  venice: "live" | "fallback";
 };
 
 /**
@@ -64,25 +65,32 @@ export async function runResearch(query: string, opts: { papers?: number } = {})
     .map((w, i) => `[${i + 1}] "${w.title}" (${w.year ?? "n.d."}) — ${w.authors.map((a) => a.name).join(", ")}\n${w.abstract}`)
     .join("\n\n");
 
-  const { text, citations } = await veniceChat({
-    webSearch: true,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a rigorous research assistant. Synthesize a concise, well-structured answer " +
-          "grounded in the provided papers and live web search. Cite sources inline as [1], [2]. " +
-          "Be precise and neutral.",
-      },
-      { role: "user", content: `Question: ${query}\n\nCandidate papers:\n${sources}` },
-    ],
-  });
-
-  return {
-    query,
-    synthesis: text,
-    webCitations: citations,
-    works,
-    payouts: weightCitations(works),
-  };
+  try {
+    const { text, citations } = await veniceChat({
+      webSearch: true,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a rigorous research assistant. Synthesize a concise, well-structured answer " +
+            "grounded in the provided papers and live web search. Cite sources inline as [1], [2]. " +
+            "Be precise and neutral.",
+        },
+        { role: "user", content: `Question: ${query}\n\nCandidate papers:\n${sources}` },
+      ],
+    });
+    return { query, synthesis: text, webCitations: citations, works, payouts: weightCitations(works) , venice: "live" };
+  } catch (e) {
+    // Dev fallback: no Venice credit / 402. Build a synthesis from the abstracts
+    // so the full research → payout → settle flow stays testable for free.
+    // The real demo uses live Venice (this branch is clearly labeled in the UI).
+    const reason = e instanceof Error ? e.message : String(e);
+    const synthesis =
+      `⚠️ Venice fallback (dev mode — no credit): ${reason}\n\n` +
+      `Synthesis for "${query}" drawn from ${works.length} papers:\n\n` +
+      works
+        .map((w, i) => `[${i + 1}] ${w.title} — ${w.abstract.slice(0, 240)}…`)
+        .join("\n\n");
+    return { query, synthesis, webCitations: [], works, payouts: weightCitations(works), venice: "fallback" };
+  }
 }
