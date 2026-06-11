@@ -37,12 +37,15 @@ async function rpc<T>(method: string, params: unknown[]): Promise<T> {
   return json.result as T;
 }
 
-export type RelayerCapabilities = {
-  paymentTokens: { address: `0x${string}`; symbol: string; decimals: number }[];
+/** Per-chain capabilities (verified live shape, 2026-06-11). */
+export type ChainCapabilities = {
   feeCollector: `0x${string}`;
   targetAddress: `0x${string}`;
-  [k: string]: unknown;
+  tokens: { address: `0x${string}`; symbol: string; decimals: string }[];
 };
+
+/** relayer_getCapabilities returns a map keyed by chainId string. */
+export type RelayerCapabilities = Record<string, ChainCapabilities>;
 
 export type FeeData = {
   gasPrice: string;
@@ -53,9 +56,15 @@ export type FeeData = {
   context: string;
 };
 
-/** Discover accepted fee tokens + collector for a chain. Always call before sending. */
+/** Full capabilities map (keyed by chainId string). */
 export function getCapabilities(chainId: number): Promise<RelayerCapabilities> {
   return rpc<RelayerCapabilities>("relayer_getCapabilities", [String(chainId)]);
+}
+
+/** Convenience: accepted fee tokens + collector for one chain. Call before sending. */
+export async function getChainCapabilities(chainId: number): Promise<ChainCapabilities | undefined> {
+  const caps = await getCapabilities(chainId);
+  return caps[String(chainId)];
 }
 
 /** Quote the stablecoin fee. feeAmount owed = max(convertedFee, minFee). */
