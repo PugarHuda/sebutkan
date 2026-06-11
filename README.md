@@ -8,6 +8,8 @@
 
 Built for the **MetaMask Smart Accounts Kit × 1Shot API × Venice AI Dev Cook-Off** (June 2026).
 
+**🔗 Live demo: https://sebutkan.vercel.app** · **Repo: https://github.com/PugarHuda/sebutkan**
+
 ---
 
 ## Why this is different
