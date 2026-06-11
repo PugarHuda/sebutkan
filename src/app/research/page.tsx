@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAccount, useConnect, useDisconnect, useWalletClient } from "wagmi";
 import { requestBudgetPermission, type BudgetParams } from "@/lib/permissions";
 import { PERMISSION_CHAIN } from "@/lib/chains";
@@ -26,17 +26,17 @@ type RedeemState =
   | { status: "done"; result: unknown }
   | { status: "error"; message: string };
 
-// Dev session account (the agent's account that redeems delegations).
-// In production this is the Researcher agent's smart account.
-const SESSION_ACCOUNT =
-  (process.env.NEXT_PUBLIC_SESSION_ACCOUNT as `0x${string}`) ??
-  "0x000000000000000000000000000000000000dEaD";
-
 type GrantState =
   | { status: "idle" }
   | { status: "granting" }
   | { status: "granted"; context: unknown }
   | { status: "error"; message: string };
+
+const SESSION_ACCOUNT =
+  (process.env.NEXT_PUBLIC_SESSION_ACCOUNT as `0x${string}`) ??
+  "0x000000000000000000000000000000000000dEaD";
+
+const RESEARCH_STEPS = ["Search corpus", "Purchase via x402", "Read with Venice", "Attribute authors", "Ready to settle"];
 
 export default function ResearchPage() {
   const { address, isConnected, chainId } = useAccount();
@@ -52,6 +52,15 @@ export default function ResearchPage() {
   const [research, setResearch] = useState<ResearchState>({ status: "idle" });
   const [settle, setSettle] = useState<SettleState>({ status: "idle" });
   const [redeem, setRedeem] = useState<RedeemState>({ status: "idle" });
+  const [tick, setTick] = useState(0);
+
+  // Live agent ticker while a research request is in flight.
+  useEffect(() => {
+    if (research.status !== "running") return;
+    setTick(0);
+    const id = setInterval(() => setTick((t) => Math.min(t + 1, RESEARCH_STEPS.length - 1)), 900);
+    return () => clearInterval(id);
+  }, [research.status]);
 
   async function handleRedeem() {
     if (research.status !== "done" || !walletClient || chainId === undefined) return;
@@ -81,7 +90,7 @@ export default function ResearchPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           query: research.result.query,
-          amountUSDC6: "500000", // 0.5 USDC demo spend split across authors
+          amountUSDC6: "500000",
           payouts: research.result.payouts,
           ledger,
         }),
@@ -97,6 +106,8 @@ export default function ResearchPage() {
   async function handleResearch() {
     if (!query.trim()) return;
     setResearch({ status: "running" });
+    setSettle({ status: "idle" });
+    setRedeem({ status: "idle" });
     try {
       const res = await fetch("/api/research", {
         method: "POST",
@@ -132,33 +143,45 @@ export default function ResearchPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-12">
-      <header className="mb-10">
-        <h1 className="text-3xl font-semibold tracking-tight">Sebutkan</h1>
-        <p className="mt-2 text-sm text-neutral-500">
-          The research agent that cites <span className="italic">and pays</span> its sources.
-          Grant one scoped budget — the agent does the rest, gasless, non-custodial.
+    <main className="relative mx-auto w-full max-w-3xl px-6 py-14">
+      {/* ambient gradient */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 bg-gradient-to-b from-emerald-50 to-transparent dark:from-emerald-950/20" />
+
+      <header className="mb-12">
+        <div className="mb-4 flex flex-wrap gap-2">
+          {["non-custodial", "gasless", "one permission", "pays its sources"].map((c) => (
+            <span
+              key={c}
+              className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
+            >
+              {c}
+            </span>
+          ))}
+        </div>
+        <h1 className="bg-gradient-to-br from-neutral-900 to-neutral-500 bg-clip-text text-4xl font-semibold tracking-tight text-transparent dark:from-white dark:to-neutral-400">
+          Sebutkan
+        </h1>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-neutral-500">
+          The research agent that cites <span className="italic text-neutral-700 dark:text-neutral-300">and pays</span> its
+          sources. Grant one scoped budget — it buys papers, reads with Venice, and splits USDC
+          back to every author it cites. Gasless. You never sign again.
         </p>
       </header>
 
       {/* 1. Connect */}
-      <section className="mb-8 rounded-xl border border-neutral-200 p-5 dark:border-neutral-800">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium">1 · Connect wallet (MetaMask Flask)</h2>
+      <Card>
+        <StepHead n={1} title="Connect wallet (MetaMask Flask)">
           {isConnected ? (
-            <button
-              onClick={() => disconnect()}
-              className="text-xs text-neutral-500 underline underline-offset-2"
-            >
-              disconnect
-            </button>
+            <span className="flex items-center gap-1.5 text-[11px] text-emerald-600">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> connected
+              <button onClick={() => disconnect()} className="ml-2 text-neutral-400 underline">
+                disconnect
+              </button>
+            </span>
           ) : null}
-        </div>
-
+        </StepHead>
         {isConnected ? (
-          <p className="mt-3 font-mono text-xs text-neutral-600 dark:text-neutral-400">
-            {address}
-          </p>
+          <p className="mt-3 font-mono text-xs text-neutral-600 dark:text-neutral-400">{address}</p>
         ) : (
           <div className="mt-3 flex flex-wrap gap-2">
             {connectors.map((c) => (
@@ -166,109 +189,95 @@ export default function ResearchPage() {
                 key={c.uid}
                 onClick={() => connect({ connector: c })}
                 disabled={connecting}
-                className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                className="rounded-lg bg-neutral-900 px-3.5 py-2 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-black"
               >
                 {c.name}
               </button>
             ))}
           </div>
         )}
-
         {onWrongChain ? (
           <p className="mt-3 text-xs text-amber-600">
             Switch to {PERMISSION_CHAIN.name} (chain {PERMISSION_CHAIN.id}) — ERC-7715 lives there.
           </p>
         ) : null}
-      </section>
+      </Card>
 
-      {/* 2. Grant budget (ERC-7715) */}
-      <section className="mb-8 rounded-xl border border-neutral-200 p-5 dark:border-neutral-800">
-        <h2 className="text-sm font-medium">2 · Grant a periodic USDC budget (ERC-7715)</h2>
+      {/* 2. Grant */}
+      <Card>
+        <StepHead n={2} title="Grant a periodic USDC budget (ERC-7715)" />
         <p className="mt-1 text-xs text-neutral-500">
           One signature creates an ERC-7710 delegation. The agent can never spend beyond this.
         </p>
-
         <div className="mt-4 flex flex-wrap items-end gap-4">
-          <label className="text-xs">
-            <span className="block text-neutral-500">USDC / day</span>
+          <Field label="USDC / day">
             <input
               type="number"
               min={1}
               value={perDay}
               onChange={(e) => setPerDay(Number(e.target.value))}
-              className="mt-1 w-24 rounded-md border border-neutral-300 bg-transparent px-2 py-1 dark:border-neutral-700"
+              className="w-24 rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 dark:border-neutral-700"
             />
-          </label>
-          <label className="text-xs">
-            <span className="block text-neutral-500">Expires in (h)</span>
+          </Field>
+          <Field label="Expires in (h)">
             <input
               type="number"
               min={1}
               value={expiryHours}
               onChange={(e) => setExpiryHours(Number(e.target.value))}
-              className="mt-1 w-24 rounded-md border border-neutral-300 bg-transparent px-2 py-1 dark:border-neutral-700"
+              className="w-24 rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 dark:border-neutral-700"
             />
-          </label>
+          </Field>
           <button
             onClick={handleGrant}
             disabled={!isConnected || !walletClient || onWrongChain || grant.status === "granting"}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white disabled:opacity-40"
+            className="rounded-lg bg-emerald-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-40"
           >
             {grant.status === "granting" ? "Awaiting signature…" : "Grant budget"}
           </button>
+          {grant.status === "granted" ? (
+            <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600">✓ permission granted</span>
+          ) : null}
         </div>
-
         {grant.status === "granted" ? (
           <pre className="mt-4 max-h-48 overflow-auto rounded-md bg-neutral-100 p-3 text-[11px] dark:bg-neutral-900">
             {JSON.stringify(grant.context, bigintReplacer, 2)}
           </pre>
         ) : null}
-        {grant.status === "error" ? (
-          <p className="mt-4 rounded-md bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40">
-            {grant.message}
-          </p>
-        ) : null}
-      </section>
+        {grant.status === "error" ? <ErrorBox>{grant.message}</ErrorBox> : null}
+      </Card>
 
-      {/* A2A delegation tree */}
-      <section className="mb-8 rounded-xl border border-neutral-200 p-5 dark:border-neutral-800">
-        <h2 className="text-sm font-medium">Agent mesh — redelegation (A2A)</h2>
+      {/* A2A tree */}
+      <Card>
+        <StepHead title="Agent mesh — redelegation (A2A)" />
         <p className="mt-1 text-xs text-neutral-500">
-          The Researcher subcontracts the Summarizer by redelegating a strictly
-          narrower slice. Authority only narrows — caveats can tighten, never loosen.
+          The Researcher subcontracts the Summarizer by redelegating a strictly narrower slice.
+          Authority only narrows — caveats tighten, never loosen.
         </p>
-        <ol className="mt-4 space-y-2">
+        <ol className="mt-4 space-y-1.5">
           {AGENT_MESH.map((role, i) => {
             const now = Math.floor(Date.now() / 1000);
-            const { budgetUSDC, expiryUnix } = narrowedFor(
-              role,
-              perDay,
-              now + expiryHours * 3600,
-              now,
-            );
+            const { budgetUSDC, expiryUnix } = narrowedFor(role, perDay, now + expiryHours * 3600, now);
             const hours = Math.max(0, Math.round((expiryUnix - now) / 3600));
             return (
               <li
                 key={role.id}
-                className="rounded-lg border border-neutral-100 p-3 dark:border-neutral-800"
-                style={{ marginLeft: `${i * 20}px` }}
+                className="rounded-lg border border-neutral-100 bg-white/40 p-3 dark:border-neutral-800 dark:bg-white/5"
+                style={{ marginLeft: `${i * 22}px` }}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium">
-                    {i > 0 ? "↳ " : ""}
+                    {i > 0 ? <span className="text-emerald-500">↳ </span> : null}
                     {role.label}
                   </span>
-                  <span className="font-mono text-[11px] text-emerald-600">
+                  <span className="rounded bg-emerald-50 px-2 py-0.5 font-mono text-[11px] text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                     ≤ {budgetUSDC.toFixed(2)} USDC · {hours}h
                   </span>
                 </div>
                 <p className="mt-1 text-[11px] text-neutral-500">{role.blurb}</p>
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {role.caveats.map((c) => (
-                    <span
-                      key={c}
-                      className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 dark:bg-neutral-900"
-                    >
+                    <span key={c} className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 dark:bg-neutral-900">
                       {c}
                     </span>
                   ))}
@@ -277,51 +286,66 @@ export default function ResearchPage() {
             );
           })}
         </ol>
-      </section>
+      </Card>
 
       {/* 3. Research */}
-      <section className="rounded-xl border border-neutral-200 p-5 dark:border-neutral-800">
-        <h2 className="text-sm font-medium">3 · Ask a research question</h2>
+      <Card>
+        <StepHead n={3} title="Ask a research question" />
         <p className="mt-1 text-xs text-neutral-500">
-          The agent searches the corpus, reads with Venice (chat + web search), and computes who
-          gets paid. Settlement runs next via attestAndSplit → 1Shot.
+          The agent searches the corpus, reads with Venice (chat + web search), and computes who gets paid.
         </p>
-
         <div className="mt-4 flex gap-2">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleResearch()}
             placeholder="e.g. What are the most effective carbon capture methods?"
-            className="flex-1 rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700"
+            className="flex-1 rounded-lg border border-neutral-300 bg-transparent px-3.5 py-2.5 text-sm dark:border-neutral-700"
           />
           <button
             onClick={handleResearch}
             disabled={research.status === "running" || !query.trim()}
-            className="rounded-lg bg-neutral-900 px-4 py-2 text-xs font-medium text-white disabled:opacity-40 dark:bg-white dark:text-black"
+            className="rounded-lg bg-neutral-900 px-5 py-2.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-40 dark:bg-white dark:text-black"
           >
             {research.status === "running" ? "Researching…" : "Research"}
           </button>
         </div>
 
-        {research.status === "error" ? (
-          <p className="mt-4 rounded-md bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40">
-            {research.message}
-          </p>
+        {research.status === "running" ? (
+          <ol className="mt-5 space-y-2">
+            {RESEARCH_STEPS.map((s, i) => (
+              <li key={s} className="flex items-center gap-2.5 text-xs">
+                <span
+                  className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] ${
+                    i < tick
+                      ? "bg-emerald-500 text-white"
+                      : i === tick
+                        ? "animate-pulse bg-emerald-200 text-emerald-700 dark:bg-emerald-900"
+                        : "bg-neutral-200 text-neutral-400 dark:bg-neutral-800"
+                  }`}
+                >
+                  {i < tick ? "✓" : i + 1}
+                </span>
+                <span className={i <= tick ? "text-neutral-700 dark:text-neutral-200" : "text-neutral-400"}>{s}</span>
+              </li>
+            ))}
+          </ol>
         ) : null}
+
+        {research.status === "error" ? <ErrorBox>{research.message}</ErrorBox> : null}
 
         {research.status === "done" ? (
           <div className="mt-5 space-y-5">
             <span
-              className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${
+              className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-medium ${
                 research.result.venice === "live"
                   ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
                   : "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
               }`}
             >
-              {research.result.venice === "live" ? "Venice live" : "Venice fallback (dev)"}
+              {research.result.venice === "live" ? "● Venice live" : "● Venice fallback (dev)"}
             </span>
-            <article className="whitespace-pre-wrap text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
+            <article className="whitespace-pre-wrap rounded-lg bg-neutral-50 p-4 text-sm leading-relaxed text-neutral-800 dark:bg-neutral-900/50 dark:text-neutral-200">
               {research.result.synthesis}
             </article>
 
@@ -347,74 +371,102 @@ export default function ResearchPage() {
               <table className="mt-2 w-full text-left text-xs">
                 <thead className="text-neutral-400">
                   <tr>
-                    <th className="py-1">Author</th>
-                    <th>Paper</th>
-                    <th className="text-right">Share</th>
+                    <th className="py-1 font-normal">Author</th>
+                    <th className="font-normal">Paper</th>
+                    <th className="text-right font-normal">Share</th>
                   </tr>
                 </thead>
                 <tbody>
                   {research.result.payouts.map((p, i) => (
                     <tr key={i} className="border-t border-neutral-100 dark:border-neutral-800">
-                      <td className="py-1.5 pr-2">
-                        <div>{p.authorName}</div>
+                      <td className="py-2 pr-2">
+                        <div className="font-medium text-neutral-800 dark:text-neutral-200">{p.authorName}</div>
                         <div className="font-mono text-[10px] text-neutral-400">{p.author}</div>
                       </td>
                       <td className="max-w-[180px] truncate pr-2 text-neutral-500" title={p.workTitle}>
                         {p.workTitle}
                       </td>
-                      <td className="text-right font-medium">{(p.weightBps / 100).toFixed(1)}%</td>
+                      <td className="text-right font-mono font-medium text-emerald-600">{(p.weightBps / 100).toFixed(1)}%</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              <div className="mt-4 flex items-center gap-3">
+              <div className="mt-5 flex flex-wrap items-center gap-3">
                 <button
                   onClick={handleSettle}
                   disabled={settle.status === "settling"}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white disabled:opacity-40"
+                  className="rounded-lg bg-emerald-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-40"
                 >
                   {settle.status === "settling" ? "Settling…" : "Settle & pay authors (0.5 USDC)"}
                 </button>
                 <button
                   onClick={handleRedeem}
                   disabled={redeem.status === "redeeming" || !walletClient}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-medium text-white disabled:opacity-40"
+                  className="rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-indigo-500 disabled:opacity-40"
                 >
-                  {redeem.status === "redeeming" ? "Relaying…" : "Pay authors gasless (1Shot)"}
+                  {redeem.status === "redeeming" ? "Relaying…" : "Pay authors gasless (1Shot) →"}
                 </button>
-                <span className="text-[11px] text-neutral-400">
-                  encodes attestAndSplit · or relays USDC splits gasless via 1Shot
-                </span>
               </div>
+              <p className="mt-2 text-[11px] text-neutral-400">
+                encodes attestAndSplit · or relays USDC splits gasless via the 1Shot permissionless relayer
+              </p>
 
               {redeem.status === "done" ? (
                 <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-indigo-50 p-3 text-[11px] dark:bg-indigo-950/40">
                   {JSON.stringify(redeem.result, null, 2)}
                 </pre>
               ) : null}
-              {redeem.status === "error" ? (
-                <p className="mt-3 rounded-md bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40">
-                  {redeem.message}
-                </p>
-              ) : null}
-
+              {redeem.status === "error" ? <ErrorBox>{redeem.message}</ErrorBox> : null}
               {settle.status === "done" ? (
                 <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-neutral-100 p-3 text-[11px] dark:bg-neutral-900">
                   {JSON.stringify(settle.result, null, 2)}
                 </pre>
               ) : null}
-              {settle.status === "error" ? (
-                <p className="mt-3 rounded-md bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40">
-                  {settle.message}
-                </p>
-              ) : null}
+              {settle.status === "error" ? <ErrorBox>{settle.message}</ErrorBox> : null}
             </div>
           </div>
         ) : null}
-      </section>
+      </Card>
     </main>
   );
+}
+
+function Card({ children }: { children: React.ReactNode }) {
+  return (
+    <section className="mb-6 rounded-2xl border border-neutral-200 bg-white/60 p-6 shadow-sm backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/40">
+      {children}
+    </section>
+  );
+}
+
+function StepHead({ n, title, children }: { n?: number; title: string; children?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between">
+      <h2 className="flex items-center gap-2.5 text-sm font-medium">
+        {n ? (
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900 text-[11px] text-white dark:bg-white dark:text-black">
+            {n}
+          </span>
+        ) : null}
+        {title}
+      </h2>
+      {children}
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="text-xs">
+      <span className="mb-1 block text-neutral-500">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function ErrorBox({ children }: { children: React.ReactNode }) {
+  return <p className="mt-4 rounded-md bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40">{children}</p>;
 }
 
 function bigintReplacer(_key: string, value: unknown) {
