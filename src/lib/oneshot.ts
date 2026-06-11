@@ -21,13 +21,21 @@
  * against the relayer JWKS; poll relayer_getStatus every 2-3s as fallback.
  */
 
-const RELAYER_URL = process.env.ONESHOT_RELAYER_URL ?? "https://relayer.1shotapi.com/relayers";
+const TESTNET_CHAINS = new Set(["11155111", "84532"]); // Sepolia, Base Sepolia
+
+/** Pick the relayer endpoint: testnets are served by .dev, mainnets by .com. */
+export function relayerUrlForChain(chainId: number | string): string {
+  if (process.env.ONESHOT_RELAYER_URL) return process.env.ONESHOT_RELAYER_URL;
+  return TESTNET_CHAINS.has(String(chainId))
+    ? "https://relayer.1shotapi.dev/relayers"
+    : "https://relayer.1shotapi.com/relayers";
+}
 
 let _id = 0;
 
-// JSON-RPC params may be an array (getCapabilities) or an object (getFeeData).
-async function rpc<T>(method: string, params: unknown): Promise<T> {
-  const res = await fetch(RELAYER_URL, {
+// JSON-RPC params may be an array (getCapabilities) or an object (getFeeData/send).
+async function rpc<T>(method: string, params: unknown, url: string): Promise<T> {
+  const res = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: ++_id, method, params }),
@@ -36,6 +44,21 @@ async function rpc<T>(method: string, params: unknown): Promise<T> {
   const json = (await res.json()) as { result?: T; error?: { code: number; message: string } };
   if (json.error) throw new Error(`1Shot ${method} RPC ${json.error.code}: ${json.error.message}`);
   return json.result as T;
+}
+
+/** Recursively convert bigint → 0x-hex and Uint8Array → hex for JSON-RPC. */
+export function toRelayerJson(value: unknown): unknown {
+  if (typeof value === "bigint") return `0x${value.toString(16)}`;
+  if (value instanceof Uint8Array) {
+    return `0x${Array.from(value).map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+  }
+  if (Array.isArray(value)) return value.map(toRelayerJson);
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) out[k] = toRelayerJson(v);
+    return out;
+  }
+  return value;
 }
 
 /** Per-chain capabilities (verified live shape, 2026-06-11). */
@@ -65,7 +88,7 @@ export type FeeData = {
 
 /** Full capabilities map (keyed by chainId string). */
 export function getCapabilities(chainId: number): Promise<RelayerCapabilities> {
-  return rpc<RelayerCapabilities>("relayer_getCapabilities", [String(chainId)]);
+  return rpc<RelayerCapabilities>("relayer_getCapabilities", [String(chainId)], relayerUrlForChain(chainId));
 }
 
 /** Convenience: accepted fee tokens + collector for one chain. Call before sending. */
@@ -77,7 +100,7 @@ export async function getChainCapabilities(chainId: number): Promise<ChainCapabi
 /** Pre-bundle rough quote. feeAmount owed = max(convertedFee, minFee).
  *  params is an object (not array) with chainId as a string. */
 export function getFeeData(chainId: number, token: `0x${string}`): Promise<FeeData> {
-  return rpc<FeeData>("relayer_getFeeData", { chainId: String(chainId), token });
+  return rpc<FeeData>("relayer_getFeeData", { chainId: String(chainId), token }, relayerUrlForChain(chainId));
 }
 
 /**
@@ -136,7 +159,7 @@ export type Send7710TransactionParams = {
 export type Send7710Result = { TaskId: string };
 
 export function send7710Transaction(params: Send7710TransactionParams): Promise<Send7710Result> {
-  return rpc<Send7710Result>("relayer_send7710Transaction", params);
+  return rpc<Send7710Result>("relayer_send7710Transaction", params, relayerUrlForChain(params.chainId));
 }
 
 export type EstimateResult = {
@@ -151,14 +174,14 @@ export type EstimateResult = {
 export function estimate7710Transaction(
   params: Omit<Send7710TransactionParams, "context">,
 ): Promise<EstimateResult> {
-  return rpc<EstimateResult>("relayer_estimate7710Transaction", params);
+  return rpc<EstimateResult>("relayer_estimate7710Transaction", params, relayerUrlForChain(params.chainId));
 }
 
 export type RelayerStatusValue = "Pending" | "Submitted" | "Confirmed" | "Rejected" | "Reverted";
 export type RelayerStatus = { status: RelayerStatusValue; txHash?: `0x${string}`; chainId?: number };
 
-export function getStatus(taskId: string): Promise<RelayerStatus> {
-  return rpc<RelayerStatus>("relayer_getStatus", [taskId]);
+export function getStatus(taskId: string, chainId: number | string = 1): Promise<RelayerStatus> {
+  return rpc<RelayerStatus>("relayer_getStatus", [taskId], relayerUrlForChain(chainId));
 }
 
 /** Poll helper for when webhooks aren't wired (every 2-3s per docs). */

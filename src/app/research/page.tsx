@@ -6,6 +6,7 @@ import { requestBudgetPermission, type BudgetParams } from "@/lib/permissions";
 import { PERMISSION_CHAIN } from "@/lib/chains";
 import type { ResearchResult } from "@/lib/agent";
 import { AGENT_MESH, narrowedFor } from "@/lib/agents";
+import { redeemViaOneShot } from "@/lib/redeem";
 
 type ResearchState =
   | { status: "idle" }
@@ -16,6 +17,12 @@ type ResearchState =
 type SettleState =
   | { status: "idle" }
   | { status: "settling" }
+  | { status: "done"; result: unknown }
+  | { status: "error"; message: string };
+
+type RedeemState =
+  | { status: "idle" }
+  | { status: "redeeming" }
   | { status: "done"; result: unknown }
   | { status: "error"; message: string };
 
@@ -44,6 +51,23 @@ export default function ResearchPage() {
   const [query, setQuery] = useState("");
   const [research, setResearch] = useState<ResearchState>({ status: "idle" });
   const [settle, setSettle] = useState<SettleState>({ status: "idle" });
+  const [redeem, setRedeem] = useState<RedeemState>({ status: "idle" });
+
+  async function handleRedeem() {
+    if (research.status !== "done" || !walletClient || chainId === undefined) return;
+    setRedeem({ status: "redeeming" });
+    try {
+      const result = await redeemViaOneShot({
+        walletClient,
+        chainId,
+        payouts: research.result.payouts,
+        workUSDC: 0.5,
+      });
+      setRedeem({ status: "done", result });
+    } catch (e) {
+      setRedeem({ status: "error", message: e instanceof Error ? e.message : String(e) });
+    }
+  }
 
   async function handleSettle() {
     if (research.status !== "done") return;
@@ -352,10 +376,28 @@ export default function ResearchPage() {
                 >
                   {settle.status === "settling" ? "Settling…" : "Settle & pay authors (0.5 USDC)"}
                 </button>
+                <button
+                  onClick={handleRedeem}
+                  disabled={redeem.status === "redeeming" || !walletClient}
+                  className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-medium text-white disabled:opacity-40"
+                >
+                  {redeem.status === "redeeming" ? "Relaying…" : "Pay authors gasless (1Shot)"}
+                </button>
                 <span className="text-[11px] text-neutral-400">
-                  redeems the ERC-7710 delegation → attestAndSplit → relayed via 1Shot
+                  encodes attestAndSplit · or relays USDC splits gasless via 1Shot
                 </span>
               </div>
+
+              {redeem.status === "done" ? (
+                <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-indigo-50 p-3 text-[11px] dark:bg-indigo-950/40">
+                  {JSON.stringify(redeem.result, null, 2)}
+                </pre>
+              ) : null}
+              {redeem.status === "error" ? (
+                <p className="mt-3 rounded-md bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40">
+                  {redeem.message}
+                </p>
+              ) : null}
 
               {settle.status === "done" ? (
                 <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-neutral-100 p-3 text-[11px] dark:bg-neutral-900">
