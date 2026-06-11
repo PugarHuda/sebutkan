@@ -4,13 +4,15 @@
  * Finds the papers an agent will read and pay for. Uses OpenAlex (free, no key).
  * Each work carries its authors, which is who Sebutkan pays on settlement.
  */
+import { resolveAuthorWallets, demoWallet } from "./registry";
 
 export type Author = {
   id: string;
   name: string;
-  /** Demo wallet derived deterministically from the OpenAlex author id.
-   *  Production path: ORCID OAuth → on-chain wallet binding (see roadmap). */
+  /** Resolved wallet: the real claimed wallet if bound in NameRegistry, else a
+   *  deterministic demo address. `claimed` says which. */
   wallet: `0x${string}`;
+  claimed: boolean;
 };
 
 export type Work = {
@@ -23,13 +25,6 @@ export type Work = {
   /** Relevance rank (0 = most relevant) used to weight citation payouts. */
   rank: number;
 };
-
-/** Deterministic demo wallet from an OpenAlex id (stable across runs). */
-function demoWallet(seed: string): `0x${string}` {
-  let h = 0n;
-  for (const ch of seed) h = (h * 131n + BigInt(ch.charCodeAt(0))) % (1n << 160n);
-  return `0x${h.toString(16).padStart(40, "0")}` as `0x${string}`;
-}
 
 /** Reconstruct an abstract from OpenAlex's inverted index. */
 function deinvert(idx?: Record<string, number[]>): string {
@@ -63,18 +58,23 @@ export async function searchCorpus(query: string, limit = 5): Promise<Work[]> {
   const res = await fetch(url, { headers: { accept: "application/json" } });
   if (!res.ok) throw new Error(`OpenAlex ${res.status}: ${await res.text()}`);
   const json = (await res.json()) as { results?: OpenAlexWork[] };
+  const results = json.results ?? [];
 
-  return (json.results ?? []).map((w, rank) => ({
+  // Resolve every author's wallet from the on-chain NameRegistry (real claimed
+  // wallets) with a labeled demo fallback for unclaimed authors.
+  const authorIds = results.flatMap((w) => (w.authorships ?? []).slice(0, 4).map((a) => a.author.id));
+  const wallets = await resolveAuthorWallets(authorIds);
+
+  return results.map((w, rank) => ({
     id: w.id,
     title: w.title ?? "(untitled)",
     year: w.publication_year,
     url: w.primary_location?.landing_page_url ?? (w.doi ? `https://doi.org/${w.doi}` : w.id),
     abstract: deinvert(w.abstract_inverted_index).slice(0, 1200),
     rank,
-    authors: (w.authorships ?? []).slice(0, 4).map((a) => ({
-      id: a.author.id,
-      name: a.author.display_name,
-      wallet: demoWallet(a.author.id),
-    })),
+    authors: (w.authorships ?? []).slice(0, 4).map((a) => {
+      const r = wallets.get(a.author.id) ?? { wallet: demoWallet(a.author.id), claimed: false };
+      return { id: a.author.id, name: a.author.display_name, wallet: r.wallet, claimed: r.claimed };
+    }),
   }));
 }

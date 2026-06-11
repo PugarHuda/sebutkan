@@ -15,6 +15,8 @@ export type CitationPayout = {
   weightBps: number;
   workTitle: string;
   url: string;
+  /** true if the wallet is a real claimed wallet (NameRegistry), false if demo. */
+  claimed: boolean;
 };
 
 export type ResearchResult = {
@@ -40,7 +42,13 @@ export function weightCitations(works: Work[]): CitationPayout[] {
     const workWeight = works.length - i; // rank 0 → highest
     const share = w.authors.length ? workWeight / w.authors.length : 0;
     for (const a of w.authors) {
-      flat.push({ author: a.wallet, authorName: a.name, workTitle: w.title, url: w.url });
+      flat.push({
+        author: a.wallet,
+        authorName: a.name,
+        workTitle: w.title,
+        url: w.url,
+        claimed: a.claimed,
+      });
       rawWeights.push(share);
     }
   });
@@ -60,6 +68,18 @@ export function weightCitations(works: Work[]): CitationPayout[] {
 /** Run a full research query and return synthesis + payout plan. */
 export async function runResearch(query: string, opts: { papers?: number } = {}): Promise<ResearchResult> {
   const works = await searchCorpus(query, opts.papers ?? 5);
+
+  // No corpus hits → return cleanly with no payouts (UI disables settle/redeem).
+  if (works.length === 0) {
+    return {
+      query,
+      synthesis: `No papers found for "${query}". Try a broader or more specific research question.`,
+      webCitations: [],
+      works: [],
+      payouts: [],
+      venice: "fallback",
+    };
+  }
 
   const sources = works
     .map((w, i) => `[${i + 1}] "${w.title}" (${w.year ?? "n.d."}) — ${w.authors.map((a) => a.name).join(", ")}\n${w.abstract}`)
