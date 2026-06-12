@@ -87,10 +87,15 @@ export type ResearchOptions = {
 
 /** Run a full research query and return synthesis + payout plan. */
 export async function runResearch(query: string, opts: ResearchOptions = {}): Promise<ResearchResult> {
+  // Clamp untrusted inputs (the API is public).
+  const papers = Math.min(10, Math.max(1, Math.floor(opts.papers ?? 5)));
+  const clampYear = (y?: number) =>
+    y && y >= 1800 && y <= 2100 ? Math.floor(y) : undefined;
+
   const works = await searchCorpus(query, {
-    limit: opts.papers ?? 5,
-    fromYear: opts.fromYear,
-    toYear: opts.toYear,
+    limit: papers,
+    fromYear: clampYear(opts.fromYear),
+    toYear: clampYear(opts.toYear),
   });
 
   // No corpus hits → return cleanly with no payouts (UI disables settle/redeem).
