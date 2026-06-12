@@ -9,9 +9,11 @@
  */
 
 export type AgentRole = {
-  id: "user" | "researcher" | "summarizer";
+  id: "user" | "researcher" | "reader" | "factchecker" | "summarizer";
   label: string;
   blurb: string;
+  /** Indent level in the delegation tree (0 = root). */
+  depth: number;
   /** Fraction of the parent's budget this agent may redeem (0–1). */
   budgetFraction: number;
   /** Expiry as a fraction of the parent's remaining window (0–1). */
@@ -25,6 +27,7 @@ export const AGENT_MESH: AgentRole[] = [
   {
     id: "user",
     label: "You",
+    depth: 0,
     blurb: "Grant one periodic-USDC budget via ERC-7715. Keep custody; never sign again.",
     budgetFraction: 1,
     expiryFraction: 1,
@@ -33,17 +36,37 @@ export const AGENT_MESH: AgentRole[] = [
   {
     id: "researcher",
     label: "Researcher agent",
-    blurb: "Searches the corpus, buys papers via x402, reads them with Venice, computes payouts.",
+    depth: 1,
+    blurb: "Orchestrator. Searches the corpus, buys papers via x402, and redelegates to specialists.",
     budgetFraction: 1,
     expiryFraction: 1,
-    caveats: ["inherits full budget", "may redelegate ≤ its authority"],
+    caveats: ["inherits full budget", "may redelegate ≤ its authority", "Venice: crypto-rpc, search"],
+  },
+  {
+    id: "reader",
+    label: "Reader agent",
+    depth: 2,
+    blurb: "Reads the papers and synthesizes a grounded answer with Venice (chat + web search).",
+    budgetFraction: 0.4,
+    expiryFraction: 0.5,
+    caveats: ["budget ≤ 40% of parent", "scope: read+synthesize", "Venice: chat, web-search"],
+  },
+  {
+    id: "factchecker",
+    label: "Fact-checker agent",
+    depth: 2,
+    blurb: "Independently verifies the key claims via a second Venice web search, flags weak ones.",
+    budgetFraction: 0.15,
+    expiryFraction: 0.35,
+    caveats: ["budget ≤ 15% of parent", "scope: verify-only", "Venice: web-search"],
   },
   {
     id: "summarizer",
-    label: "Summarizer sub-agent",
-    blurb: "Subcontracted to condense findings. Paid from a narrowed sub-budget it can't exceed.",
-    budgetFraction: 0.05, // 5% sub-budget
-    expiryFraction: 0.25, // shorter-lived
+    label: "Summarizer agent",
+    depth: 2,
+    blurb: "Condenses the verified findings into a TL;DR. Smallest, shortest-lived sub-budget.",
+    budgetFraction: 0.05,
+    expiryFraction: 0.25,
     caveats: ["budget ≤ 5% of parent", "expiry ≤ 25% of parent", "scope: summarize-only"],
   },
 ];

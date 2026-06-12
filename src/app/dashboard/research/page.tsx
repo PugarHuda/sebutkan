@@ -44,7 +44,14 @@ const SESSION_ACCOUNT =
   (process.env.NEXT_PUBLIC_SESSION_ACCOUNT as `0x${string}`) ??
   "0x000000000000000000000000000000000000dEaD";
 
-const RESEARCH_STEPS = ["Search corpus", "Purchase via x402", "Read with Venice", "Attribute authors", "Ready to settle"];
+const RESEARCH_STEPS = [
+  "Search corpus",
+  "Purchase via x402",
+  "Read with Venice",
+  "Fact-check (Venice)",
+  "Attribute authors",
+  "Ready to settle",
+];
 
 export default function ResearchPage() {
   const { address, isConnected, chainId } = useAccount();
@@ -336,12 +343,12 @@ export default function ResearchPage() {
             return (
               <li
                 key={role.id}
-                className="rounded-lg border border-neutral-100 bg-white/40 p-3 dark:border-neutral-800 dark:bg-white/5"
-                style={{ marginLeft: `${i * 22}px` }}
+                className="rounded-md border border-[var(--rule)] bg-[var(--paper)] p-3"
+                style={{ marginLeft: `${role.depth * 22}px` }}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium">
-                    {i > 0 ? <span className="text-emerald-500">↳ </span> : null}
+                    {role.depth > 0 ? <span className="text-[var(--accent)]">↳ </span> : null}
                     {role.label}
                   </span>
                   <span className="rounded bg-emerald-50 px-2 py-0.5 font-mono text-[11px] text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
@@ -484,9 +491,20 @@ export default function ResearchPage() {
                 ○ x402 skipped (agent unfunded)
               </span>
             )}
-            <article className="whitespace-pre-wrap rounded-lg bg-neutral-50 p-4 text-sm leading-relaxed text-neutral-800 dark:bg-neutral-900/50 dark:text-neutral-200">
+            <article className="whitespace-pre-wrap rounded-md bg-[var(--paper)] p-4 text-sm leading-relaxed text-[var(--ink)]/90">
               {research.result.synthesis}
             </article>
+
+            {research.result.verification ? (
+              <div className="rounded-md border-l-2 border-[var(--accent)] bg-[var(--accent-soft)] p-4">
+                <h3 className="serif text-sm font-semibold text-[var(--accent)]">
+                  ❝ Fact-checker agent
+                </h3>
+                <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-[var(--ink)]/80">
+                  {research.result.verification}
+                </p>
+              </div>
+            ) : null}
 
             {research.result.webCitations.length > 0 ? (
               <div>

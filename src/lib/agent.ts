@@ -33,6 +33,8 @@ export type ResearchResult = {
   venice: "live" | "fallback";
   /** Real x402 micropayment to unlock the top paper (or why it was skipped). */
   x402: { paid: boolean; txHash?: string; amountUSDC?: string; reason?: string };
+  /** Fact-checker agent's independent verification (a 2nd Venice web search). */
+  verification?: string;
 };
 
 /**
@@ -147,7 +149,31 @@ export async function runResearch(query: string, opts: ResearchOptions = {}): Pr
         { role: "user", content: `Question: ${query}\n\nCandidate papers:\n${sources}` },
       ],
     });
-    return { query, synthesis: text, webCitations: citations, works, payouts: weightCitations(works), venice: "live", x402 };
+
+    // Fact-checker agent: an independent 2nd Venice web search that verifies the
+    // synthesis's key claims and flags weak ones (degrades gracefully).
+    let verification: string | undefined;
+    try {
+      const v = await veniceChat({
+        webSearch: true,
+        temperature: 0.2,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a skeptical fact-checker. Independently verify the key claims in the answer " +
+              "using live web search. List any claim that is unsupported, contested, or weak, and give " +
+              "an overall confidence (high/medium/low). Be terse. " + lang,
+          },
+          { role: "user", content: `Question: ${query}\n\nAnswer to verify:\n${text}` },
+        ],
+      });
+      verification = v.text;
+    } catch {
+      verification = undefined;
+    }
+
+    return { query, synthesis: text, webCitations: citations, works, payouts: weightCitations(works), venice: "live", x402, verification };
   } catch (e) {
     // Dev fallback: no Venice credit / 402. Build a synthesis from the abstracts
     // so the full research → payout → settle flow stays testable for free.
