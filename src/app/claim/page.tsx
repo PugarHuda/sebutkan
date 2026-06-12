@@ -92,14 +92,17 @@ export default function ClaimPage() {
 
   return (
     <main className="mx-auto w-full max-w-xl px-6 py-14">
-      <h1 className="text-3xl font-semibold tracking-tight">Claim your author wallet</h1>
-      <p className="mt-3 text-sm text-neutral-500">
+      <span className="nb-sm inline-block bg-[var(--emerald)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+        For authors
+      </span>
+      <h1 className="mt-3 text-4xl font-black tracking-tight">Claim your author wallet</h1>
+      <p className="mt-3 text-sm font-medium text-[var(--ink)]/80">
         Prove you own your <strong>ORCID</strong> (OAuth) and your wallet (one signature). The
         operator relays an on-chain binding — every Sebutkan citation of your work then pays
         <span className="italic"> your real wallet</span>. You pay no gas.
       </p>
 
-      <div className="mt-8 space-y-5 rounded-2xl border border-neutral-200 bg-white/60 p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/40">
+      <div className="nb mt-8 space-y-5 bg-[var(--paper-2)] p-6">
         {/* 1. connect wallet */}
         {!isConnected ? (
           <div className="flex flex-wrap gap-2">
