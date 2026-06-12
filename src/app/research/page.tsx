@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAccount, useConnect, useDisconnect, useWalletClient } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useWalletClient, useSwitchChain } from "wagmi";
 import { requestBudgetPermission, type BudgetParams } from "@/lib/permissions";
 import { PERMISSION_CHAIN } from "@/lib/chains";
 import type { ResearchResult } from "@/lib/agent";
@@ -49,6 +49,7 @@ export default function ResearchPage() {
   const { connectors, connect, isPending: connecting } = useConnect();
   const { disconnect } = useDisconnect();
   const { data: walletClient } = useWalletClient();
+  const { switchChain } = useSwitchChain();
 
   const [perDay, setPerDay] = useState(10);
   const [expiryHours, setExpiryHours] = useState(24);
@@ -78,6 +79,13 @@ export default function ResearchPage() {
       setReceipt({ status: "error", message: e instanceof Error ? e.message : String(e) });
     }
   }
+
+  // Auto-switch to the permission chain (Sepolia) once connected on the wrong one.
+  useEffect(() => {
+    if (isConnected && chainId !== undefined && chainId !== PERMISSION_CHAIN.id) {
+      switchChain?.({ chainId: PERMISSION_CHAIN.id });
+    }
+  }, [isConnected, chainId, switchChain]);
 
   // Live agent ticker while a research request is in flight.
   useEffect(() => {
@@ -222,9 +230,15 @@ export default function ResearchPage() {
           </div>
         )}
         {onWrongChain ? (
-          <p className="mt-3 text-xs text-amber-600">
-            Switch to {PERMISSION_CHAIN.name} (chain {PERMISSION_CHAIN.id}) — ERC-7715 lives there.
-          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              onClick={() => switchChain?.({ chainId: PERMISSION_CHAIN.id })}
+              className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-amber-400"
+            >
+              Switch to {PERMISSION_CHAIN.name}
+            </button>
+            <span className="text-[11px] text-amber-600">ERC-7715 lives on {PERMISSION_CHAIN.name}.</span>
+          </div>
         ) : null}
       </Card>
 
