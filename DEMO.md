@@ -52,8 +52,15 @@ Show the landing page. One line: *non-custodial, gasless, one permission.*
 | Requirement | Where to see it |
 |---|---|
 | MetaMask Smart Accounts Kit in main flow | `/research` step 2 — ERC-7715 grant in Flask |
-| x402 + ERC-7710 | `/api/paper` 402 challenge; payout redeems the 7710 delegation |
+| x402 + ERC-7710 | `/api/paper` 402 challenge → **on-chain-verified** USDC payment unlocks it; payout redeems the 7710 delegation |
 | A2A redelegation | Agent mesh tree; `lib/redeem.ts` grants to relayer targetAddress; `permissions.redelegateTo` |
-| Venice (multi-endpoint) | chat + web-search (synthesis), image (receipt), TTS (briefing), embeddings |
-| 1Shot relayer (mainnet + 7702 + webhook) | "Pay authors gasless" → `relayer_send7710Transaction`; TaskId + explorer tx |
+| Venice (multi-endpoint) | chat + web-search (synthesis), image (receipt card), TTS (audio briefing) |
+| 1Shot relayer (7702 + webhook) | "Pay authors gasless" → `relayer_send7710Transaction`; **Ed25519 webhook** at `/api/relayer-webhook` |
+| Real on-chain attestation | "Record attestation" → live `attest()` tx (QueryAttested + AuthorPaid) on Sepolia Etherscan |
+| Real author attribution | `/claim` → sign `keccak256(authorId,wallet)` → NameRegistry bind; payout table shows claimed/demo |
+| Tests | `forge test` (14) + `npm test` (9) = 23 green |
 | Live demo | https://sebutkan.vercel.app |
+
+## Optional: claim flow (before the main demo, for a "real wallet" beat)
+- Open `/claim`, connect, sign — bind your author id to your wallet on-chain.
+- Back in `/research`, that author now shows a green **claimed** badge and is paid for real.

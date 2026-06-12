@@ -10,9 +10,17 @@ Built for the **MetaMask Smart Accounts Kit × 1Shot API × Venice AI Dev Cook-O
 
 **🔗 Live demo: https://sebutkan.vercel.app** · **Repo: https://github.com/PugarHuda/sebutkan**
 
-**On-chain:** `AttributionLedger` deployed to **Ethereum Sepolia** —
-[`0xDea6Da93265871d828B20cace2BADd5F5e70209d`](https://sepolia.etherscan.io/address/0xDea6Da93265871d828B20cace2BADd5F5e70209d)
+**On-chain (Ethereum Sepolia):**
+[`AttributionLedger`](https://sepolia.etherscan.io/address/0xE92254E3722D190ffC77C0aCa6856610708b9246) `0xE922…9246` ·
+[`NameRegistry`](https://sepolia.etherscan.io/address/0xE9DC8a36e8f14c85E687eEe26978692dA98cbeab) `0xE9DC…beab`
 (USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet).
+
+### What's real (no mocks in the critical path)
+- **Real on-chain attestation** — "Record attestation" sends a live `attest()` tx (QueryAttested + AuthorPaid events). e.g. [`0xc61adf4e…`](https://sepolia.etherscan.io/tx/0xc61adf4ee665794ef6a2588c21dd2469ff6d9855129e9d2d0501d94bd1e1c6c8)
+- **Real author attribution** — `/claim`: an author signs `keccak256(authorId, wallet)`; the operator binds it on-chain in NameRegistry. Payouts route to the real claimed wallet (unclaimed → labeled demo).
+- **Real x402** — the agent pays a USDC micropayment to unlock the top paper; the resource verifies the payment **on-chain** (not a header stub).
+- **Real 1Shot** — live `getCapabilities`/`getFeeData`; gasless redeem builds a signed delegation to the relayer `targetAddress`; **Ed25519 webhook** receiver verifies status against the JWKS.
+- **23 tests** — 14 Foundry + 9 Vitest, all green.
 
 ---
 
@@ -33,7 +41,9 @@ Sebutkan flips that — every citation is an on-chain payment to its author.
 | **Best x402 + ERC-7710** | The agent pays for paper access **and Venice inference** via **x402**, settled by redeeming the **ERC-7710** delegation |
 | **Best A2A coordination** | The Researcher agent **redelegates** a *narrowed* slice of its permission to a Summarizer agent — authority only narrows |
 | **Best use of Venice AI** | Four Venice endpoints — chat + **web search** (grounded citations), embeddings (citation matching), image (receipt card), TTS (audio briefing). Private/uncensored = research anything |
-| **Best Use of 1Shot Relayer** | Author payouts are relayed on **mainnet** via 1Shot, gas paid in stablecoins, **EIP-7702** account upgrade, **webhook** status |
+| **Best Use of 1Shot Relayer** | Author payouts relayed via 1Shot (`.dev` testnet / `.com` mainnet), gas in stablecoins, **EIP-7702** upgrade, **Ed25519 webhook** receiver as the status source |
+
+Real on-chain attribution lives at **`/claim`** (sign → operator-relayed NameRegistry bind).
 
 ## Architecture
 
