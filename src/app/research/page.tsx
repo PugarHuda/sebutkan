@@ -245,19 +245,30 @@ export default function ResearchPage() {
           ) : null}
         </StepHead>
         {isConnected ? (
-          <p className="mt-3 font-mono text-xs text-neutral-600 dark:text-neutral-400">{address}</p>
+          <p className="mt-3 font-mono text-xs text-[var(--muted)]">{address}</p>
         ) : (
           <div className="mt-3 flex flex-wrap gap-2">
-            {connectors.map((c) => (
-              <button
-                key={c.uid}
-                onClick={() => connect({ connector: c })}
-                disabled={connecting}
-                className="rounded-lg bg-neutral-900 px-3.5 py-2 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-black"
+            {metaMaskConnectors(connectors).length ? (
+              metaMaskConnectors(connectors).map((c) => (
+                <button
+                  key={c.uid}
+                  onClick={() => connect({ connector: c })}
+                  disabled={connecting}
+                  className="rounded-md bg-[var(--accent)] px-4 py-2 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+                >
+                  Connect {c.name}
+                </button>
+              ))
+            ) : (
+              <a
+                href="https://docs.metamask.io/snaps/get-started/install-flask/"
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-md border border-[var(--rule)] px-4 py-2 text-xs font-medium hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
-                {c.name}
-              </button>
-            ))}
+                Install MetaMask Flask →
+              </a>
+            )}
           </div>
         )}
         {onWrongChain ? (
@@ -654,6 +665,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function ErrorBox({ children }: { children: React.ReactNode }) {
   return <p className="mt-4 rounded-md bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40">{children}</p>;
+}
+
+/** Show only MetaMask (prefer Flask) — hide competitor wallets from the picker. */
+function metaMaskConnectors<T extends { name: string }>(connectors: readonly T[]): T[] {
+  const mm = connectors.filter((c) => /metamask/i.test(c.name));
+  const flask = mm.filter((c) => /flask/i.test(c.name));
+  const picked = flask.length ? flask : mm;
+  // de-dupe by name
+  return picked.filter((c, i) => picked.findIndex((x) => x.name === c.name) === i);
 }
 
 function bigintReplacer(_key: string, value: unknown) {

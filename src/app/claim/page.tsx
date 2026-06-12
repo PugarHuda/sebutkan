@@ -104,18 +104,21 @@ export default function ClaimPage() {
         {/* 1. connect wallet */}
         {!isConnected ? (
           <div className="flex flex-wrap gap-2">
-            {connectors.map((c) => (
-              <button
-                key={c.uid}
-                onClick={() => connect({ connector: c })}
-                className="rounded-lg bg-neutral-900 px-3.5 py-2 text-xs font-medium text-white dark:bg-white dark:text-black"
-              >
-                Connect {c.name}
-              </button>
-            ))}
+            {connectors
+              .filter((c) => /metamask/i.test(c.name))
+              .filter((c, i, a) => a.findIndex((x) => x.name === c.name) === i)
+              .map((c) => (
+                <button
+                  key={c.uid}
+                  onClick={() => connect({ connector: c })}
+                  className="rounded-md bg-[var(--accent)] px-4 py-2 text-xs font-medium text-white"
+                >
+                  Connect {c.name}
+                </button>
+              ))}
           </div>
         ) : (
-          <p className="font-mono text-xs text-neutral-500">{address}</p>
+          <p className="font-mono text-xs text-[var(--muted)]">{address}</p>
         )}
 
         {/* 2. verify ORCID */}
