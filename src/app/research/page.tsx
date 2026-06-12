@@ -370,6 +370,23 @@ export default function ResearchPage() {
             >
               {research.result.venice === "live" ? "● Venice live" : "● Venice fallback (dev)"}
             </span>
+            {research.result.x402?.paid ? (
+              <a
+                href={`https://sepolia.etherscan.io/tx/${research.result.x402.txHash}`}
+                target="_blank"
+                rel="noreferrer"
+                className="ml-2 inline-block rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-medium text-blue-700 underline dark:bg-blue-950 dark:text-blue-300"
+              >
+                ● x402 paid {research.result.x402.amountUSDC} USDC ↗
+              </a>
+            ) : (
+              <span
+                className="ml-2 inline-block rounded-full bg-neutral-100 px-2.5 py-0.5 text-[10px] font-medium text-neutral-400 dark:bg-neutral-800"
+                title={research.result.x402?.reason}
+              >
+                ○ x402 skipped (agent unfunded)
+              </span>
+            )}
             <article className="whitespace-pre-wrap rounded-lg bg-neutral-50 p-4 text-sm leading-relaxed text-neutral-800 dark:bg-neutral-900/50 dark:text-neutral-200">
               {research.result.synthesis}
             </article>

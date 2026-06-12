@@ -8,6 +8,8 @@
  */
 import { searchCorpus, type Work } from "./corpus";
 import { veniceChat } from "./venice";
+import { payForResource } from "./x402pay";
+import { getAddress } from "viem";
 
 export type CitationPayout = {
   author: `0x${string}`;
@@ -27,6 +29,8 @@ export type ResearchResult = {
   payouts: CitationPayout[];
   /** "live" = Venice synthesized; "fallback" = dev mode (no Venice credit). */
   venice: "live" | "fallback";
+  /** Real x402 micropayment to unlock the top paper (or why it was skipped). */
+  x402: { paid: boolean; txHash?: string; amountUSDC?: string; reason?: string };
 };
 
 /**
@@ -78,7 +82,22 @@ export async function runResearch(query: string, opts: { papers?: number } = {})
       works: [],
       payouts: [],
       venice: "fallback",
+      x402: { paid: false, reason: "no papers" },
     };
+  }
+
+  // x402: pay a real USDC micropayment to unlock the top paper's full text.
+  // On-chain settlement, verifiable. Degrades honestly when the agent is unfunded.
+  const PAPER_PRICE_6 = 10_000n; // 0.01 USDC
+  let x402: ResearchResult["x402"] = { paid: false, reason: "agent has no test USDC yet" };
+  const payTo = process.env.NEXT_PUBLIC_SESSION_ACCOUNT as `0x${string}` | undefined;
+  if (payTo) {
+    try {
+      const txHash = await payForResource(getAddress(payTo), PAPER_PRICE_6);
+      x402 = { paid: true, txHash, amountUSDC: "0.01" };
+    } catch (e) {
+      x402 = { paid: false, reason: e instanceof Error ? e.message : String(e) };
+    }
   }
 
   const sources = works
@@ -99,7 +118,7 @@ export async function runResearch(query: string, opts: { papers?: number } = {})
         { role: "user", content: `Question: ${query}\n\nCandidate papers:\n${sources}` },
       ],
     });
-    return { query, synthesis: text, webCitations: citations, works, payouts: weightCitations(works) , venice: "live" };
+    return { query, synthesis: text, webCitations: citations, works, payouts: weightCitations(works), venice: "live", x402 };
   } catch (e) {
     // Dev fallback: no Venice credit / 402. Build a synthesis from the abstracts
     // so the full research → payout → settle flow stays testable for free.
@@ -111,6 +130,6 @@ export async function runResearch(query: string, opts: { papers?: number } = {})
       works
         .map((w, i) => `[${i + 1}] ${w.title} — ${w.abstract.slice(0, 240)}…`)
         .join("\n\n");
-    return { query, synthesis, webCitations: [], works, payouts: weightCitations(works), venice: "fallback" };
+    return { query, synthesis, webCitations: [], works, payouts: weightCitations(works), venice: "fallback", x402 };
   }
 }

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { require402, decodePaymentHeader } from "@/lib/x402";
-import { USDC } from "@/lib/chains";
+import { getAddress } from "viem";
+import { require402 } from "@/lib/x402";
+import { USDC, PERMISSION_CHAIN } from "@/lib/chains";
+import { verifyPayment } from "@/lib/x402pay";
 
 export const runtime = "nodejs";
 
@@ -14,8 +16,7 @@ export const runtime = "nodejs";
  * payment is settled by redeeming a 7710 delegation (see settlement.ts), which
  * our facilitator relays via 1Shot.
  */
-const PRICE_USDC_6 = 100_000n; // 0.10 USDC
-const BASE = 8453;
+const PRICE_USDC_6 = 10_000n; // 0.01 USDC
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
@@ -25,42 +26,38 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     (process.env.NEXT_PUBLIC_DELEGATION_MANAGER as `0x${string}`) ??
     "0x0000000000000000000000000000000000000000";
 
-  const paymentHeader = req.headers.get("X-PAYMENT");
+  // X-PAYMENT carries the tx hash of a USDC transfer to payTo (the "exact" scheme).
+  const txHash = req.headers.get("X-PAYMENT") as `0x${string}` | null;
 
-  if (!paymentHeader) {
+  if (!txHash) {
     return NextResponse.json(
       require402({
         amountUSDC6: PRICE_USDC_6,
-        asset: USDC[BASE],
+        asset: USDC[PERMISSION_CHAIN.id],
         payTo,
         resource: `/api/paper/${id}`,
         description: `Full text access for paper ${id}`,
-        network: "base",
+        network: PERMISSION_CHAIN.name.toLowerCase(),
         delegationManager,
       }),
       { status: 402 },
     );
   }
 
-  // Verify the payment shape. Full on-chain verification (simulate the 7710
-  // redemption) is the facilitator's job — wired with the 1Shot relay (Day 3).
-  let valid = false;
-  try {
-    const p = decodePaymentHeader(paymentHeader);
-    valid = p.scheme === "exact" && p.payload?.method === "erc7710" && !!p.payload.permissionContext;
-  } catch {
-    valid = false;
-  }
-  if (!valid) {
-    return NextResponse.json({ error: "invalid X-PAYMENT" }, { status: 402 });
+  // REAL on-chain verification: the tx must be a confirmed USDC Transfer to
+  // payTo of >= price. No header-shape stub (H1).
+  const ok = await verifyPayment(txHash, getAddress(payTo), PRICE_USDC_6);
+  if (!ok) {
+    return NextResponse.json({ error: "payment not verified on-chain" }, { status: 402 });
   }
 
   return NextResponse.json(
     {
       id,
-      fullText: `Full text of paper ${id}. (Demo content unlocked via x402 + ERC-7710 payment.)`,
+      fullText: `Full text of paper ${id}. (Unlocked via x402 — on-chain USDC payment verified.)`,
       paid: `${Number(PRICE_USDC_6) / 1e6} USDC`,
+      txHash,
     },
-    { status: 200, headers: { "X-PAYMENT-RESPONSE": "settled" } },
+    { status: 200, headers: { "X-PAYMENT-RESPONSE": "verified" } },
   );
 }
