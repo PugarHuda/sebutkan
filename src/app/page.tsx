@@ -24,13 +24,13 @@ export default function Home() {
 
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link
-            href="/research"
+            href="/dashboard"
             className="rounded-md bg-[var(--accent)] px-6 py-3 text-sm font-medium text-white transition hover:opacity-90"
           >
             Open the dashboard →
           </Link>
           <Link
-            href="/claim"
+            href="/dashboard/claim"
             className="rounded-md border border-[var(--rule)] px-6 py-3 text-sm font-medium transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
           >
             Claim your wallet (authors)
