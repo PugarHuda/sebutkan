@@ -214,28 +214,27 @@ export default function ResearchPage() {
   }
 
   return (
-    <main className="relative mx-auto w-full max-w-3xl px-6 py-14">
-      {/* ambient gradient */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 bg-gradient-to-b from-emerald-50 to-transparent dark:from-emerald-950/20" />
-
-      <header className="mb-12">
+    <main className="relative mx-auto w-full max-w-3xl px-6 py-12">
+      <header className="mb-10">
         <div className="mb-4 flex flex-wrap gap-2">
-          {["non-custodial", "gasless", "one permission", "pays its sources"].map((c) => (
+          {["non-custodial", "gasless", "one permission", "pays its sources"].map((c, i) => (
             <span
               key={c}
-              className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
+              className="nb-sm px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+              style={{
+                background: ["var(--amber)", "var(--accent)", "var(--accent-2)", "var(--emerald)"][i],
+                color: i === 0 ? "#1c1a17" : "#fff",
+              }}
             >
               {c}
             </span>
           ))}
         </div>
-        <h1 className="bg-gradient-to-br from-neutral-900 to-neutral-500 bg-clip-text text-4xl font-semibold tracking-tight text-transparent dark:from-white dark:to-neutral-400">
-          Sebutkan
-        </h1>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-neutral-500">
-          The research agent that cites <span className="italic text-neutral-700 dark:text-neutral-300">and pays</span> its
-          sources. Grant one scoped budget — it buys papers, reads with Venice, and splits USDC
-          back to every author it cites. Gasless. You never sign again.
+        <h1 className="text-5xl font-black tracking-tight">Sebutkan</h1>
+        <p className="mt-3 max-w-xl text-sm font-medium leading-relaxed text-[var(--ink)]/80">
+          The research agent that cites <span className="bg-[var(--accent)] px-1 font-bold text-white">and pays</span> its
+          sources. Grant one scoped budget — it buys papers, reads with Venice, and splits USDC back
+          to every author it cites. Gasless. You never sign again.
         </p>
       </header>
 
@@ -631,19 +630,15 @@ export default function ResearchPage() {
 }
 
 function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <section className="mb-6 rounded-2xl border border-neutral-200 bg-white/60 p-6 shadow-sm backdrop-blur-sm dark:border-neutral-800 dark:bg-neutral-900/40">
-      {children}
-    </section>
-  );
+  return <section className="nb mb-6 bg-[var(--paper-2)] p-6">{children}</section>;
 }
 
 function StepHead({ n, title, children }: { n?: number; title: string; children?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between">
-      <h2 className="flex items-center gap-2.5 text-sm font-medium">
+      <h2 className="flex items-center gap-2.5 text-sm font-extrabold">
         {n ? (
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900 text-[11px] text-white dark:bg-white dark:text-black">
+          <span className="nb-sm flex h-6 w-6 items-center justify-center bg-[var(--accent-2)] text-[11px] font-black text-white">
             {n}
           </span>
         ) : null}

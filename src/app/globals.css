@@ -1,26 +1,54 @@
 @import "tailwindcss";
 
+/* Make `dark:` variants inert (class-based, never set) so the warm theme always
+   renders regardless of OS dark mode. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #f7f0e0; /* warm cream canvas */
+  --paper-2: #fffaf0; /* card surface */
+  --ink: #1c1a17; /* soft near-black for borders/text */
+  --accent: #ff5c38; /* coral */
+  --accent-2: #6c4cff; /* electric violet */
+  --emerald: #0fae7a; /* money / paid */
+  --amber: #ffcf33; /* highlight */
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ── Neo-brutalist utilities ─────────────────────────────────────────────── */
+.nb {
+  border: 2px solid var(--ink);
+  box-shadow: 4px 4px 0 0 var(--ink);
+}
+.nb-sm {
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 0 var(--ink);
+}
+.nb-press {
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.nb-press:hover {
+  transform: translate(1px, 1px);
+  box-shadow: 3px 3px 0 0 var(--ink);
+}
+.nb-press:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 var(--ink);
+}
+.paper-grid {
+  background-image: radial-gradient(var(--ink) 0.6px, transparent 0.6px);
+  background-size: 18px 18px;
+  opacity: 0.06;
 }

@@ -6,19 +6,23 @@ import { Providers } from "./providers";
 
 function TopNav() {
   return (
-    <nav className="sticky top-0 z-50 border-b border-neutral-200/70 bg-white/70 backdrop-blur-md dark:border-neutral-800/70 dark:bg-black/50">
-      <div className="mx-auto flex h-12 w-full max-w-5xl items-center justify-between px-6">
-        <Link href="/" className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" /> Sebutkan
+    <nav className="sticky top-0 z-50 border-b-2 border-[var(--ink)] bg-[var(--paper)]">
+      <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-6">
+        <Link href="/" className="flex items-center gap-2 text-base font-black tracking-tight">
+          <span className="nb-sm inline-block h-4 w-4 bg-[var(--accent)]" /> Sebutkan
         </Link>
-        <div className="flex items-center gap-5 text-xs text-neutral-500">
-          <Link href="/research" className="hover:text-neutral-900 dark:hover:text-white">Research</Link>
-          <Link href="/claim" className="hover:text-neutral-900 dark:hover:text-white">Claim &amp; Rewards</Link>
+        <div className="flex items-center gap-1 text-xs font-bold">
+          <Link href="/research" className="px-3 py-1.5 hover:bg-[var(--amber)]">
+            Research
+          </Link>
+          <Link href="/claim" className="px-3 py-1.5 hover:bg-[var(--amber)]">
+            Claim &amp; Rewards
+          </Link>
           <a
             href="https://github.com/PugarHuda/sebutkan"
             target="_blank"
             rel="noreferrer"
-            className="hover:text-neutral-900 dark:hover:text-white"
+            className="px-3 py-1.5 hover:bg-[var(--amber)]"
           >
             GitHub ↗
           </a>
