@@ -10,9 +10,11 @@ export default function Home() {
         <span className="nb-sm inline-block rotate-[-1.5deg] bg-[var(--amber)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide">
           MetaMask Smart Accounts · 1Shot · Venice AI
         </span>
-        <h1 className="mt-6 text-6xl font-black leading-[0.95] tracking-tight sm:text-7xl">
-          Sebutkan
-        </h1>
+        <div className="mt-6 flex items-center justify-center gap-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="Sebutkan logo" width={64} height={64} className="nb-sm" />
+          <h1 className="text-6xl font-black leading-[0.95] tracking-tight sm:text-7xl">Sebutkan</h1>
+        </div>
         <p className="mx-auto mt-5 max-w-xl text-balance text-lg font-medium leading-relaxed">
           The research agent that cites <span className="bg-[var(--accent)] px-1 text-white">and pays</span> its
           sources. Grant <em>one</em> scoped budget — it buys papers, reads them with Venice, and
