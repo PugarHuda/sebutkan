@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type Ev = {
@@ -63,15 +64,19 @@ export default function ActivityPage() {
           <h2 className="serif text-lg font-semibold">Top cited authors</h2>
           <div className="mt-2 space-y-px overflow-hidden rounded-md border border-[var(--rule)] bg-[var(--rule)]">
             {board.map((a, i) => (
-              <div key={a.author} className="flex items-center justify-between bg-[var(--paper-2)] px-4 py-2.5 text-xs">
+              <Link
+                key={a.author}
+                href={`/dashboard/authors/${a.author}`}
+                className="flex items-center justify-between bg-[var(--paper-2)] px-4 py-2.5 text-xs transition hover:bg-[var(--accent-soft)]"
+              >
                 <span className="flex items-center gap-3">
                   <span className="serif w-5 text-[var(--muted)]">{i + 1}</span>
                   <span className="font-mono">{a.author.slice(0, 8)}…{a.author.slice(-6)}</span>
                 </span>
                 <span className="serif font-semibold text-[var(--accent)]">
-                  {(Number(a.earned) / 1e6).toFixed(2)} USDC
+                  {(Number(a.earned) / 1e6).toFixed(2)} USDC →
                 </span>
-              </div>
+              </Link>
             ))}
           </div>
         </section>
