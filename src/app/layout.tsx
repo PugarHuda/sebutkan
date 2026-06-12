@@ -23,6 +23,9 @@ function TopNav() {
           <Link href="/research" className="transition hover:text-[var(--accent)]">
             Research
           </Link>
+          <Link href="/dashboard/activity" className="transition hover:text-[var(--accent)]">
+            Activity
+          </Link>
           <Link href="/claim" className="transition hover:text-[var(--accent)]">
             Claim &amp; Rewards
           </Link>
