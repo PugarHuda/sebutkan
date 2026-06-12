@@ -102,6 +102,7 @@ export default function ResearchPage() {
 
   async function handleRedeem() {
     if (research.status !== "done" || chainId === undefined) return;
+    if (redeem.status === "redeeming") return; // guard against double-trigger
     setRedeem({ status: "redeeming" });
     const wc = await resolveWalletClient();
     if (!wc) {
@@ -175,14 +176,12 @@ export default function ResearchPage() {
 
   async function resolveWalletClient(): Promise<WalletClient | null> {
     if (walletClient) return walletClient;
+    // Use the already-connected account (no eth_requestAccounts → no extra popup).
+    const eth = (globalThis as { ethereum?: unknown }).ethereum;
+    if (!eth || !address) return null;
     try {
-      const eth = (globalThis as { ethereum?: unknown }).ethereum as
-        | { request: (a: { method: string }) => Promise<string[]> }
-        | undefined;
-      if (!eth) return null;
-      const [account] = await eth.request({ method: "eth_requestAccounts" });
       return createWalletClient({
-        account: account as `0x${string}`,
+        account: address,
         chain: PERMISSION_CHAIN,
         transport: custom(eth as Parameters<typeof custom>[0]),
       });
@@ -192,6 +191,7 @@ export default function ResearchPage() {
   }
 
   async function handleGrant() {
+    if (grant.status === "granting") return; // guard against double-trigger
     setGrant({ status: "granting" });
     const wc = await resolveWalletClient();
     if (!wc) {
