@@ -10,9 +10,13 @@ type Ev = {
   block: number;
   txHash: string;
 };
+type Board = { author: string; earned: string }[];
+type Totals = { attestations: number; authorsPaid: number };
 
 export default function ActivityPage() {
   const [events, setEvents] = useState<Ev[] | null>(null);
+  const [board, setBoard] = useState<Board>([]);
+  const [totals, setTotals] = useState<Totals | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -20,6 +24,8 @@ export default function ActivityPage() {
       .then((r) => r.json())
       .then((d) => {
         setEvents(d.events ?? []);
+        setBoard(d.leaderboard ?? []);
+        setTotals(d.totals ?? null);
         if (d.error) setError(d.error);
       })
       .catch((e) => setError(String(e)));
@@ -35,7 +41,44 @@ export default function ActivityPage() {
         agent really cites and pays, on-chain.
       </p>
 
-      <div className="mt-8 space-y-px overflow-hidden rounded-md border border-[var(--rule)] bg-[var(--rule)]">
+      {/* Stat tiles */}
+      {totals ? (
+        <div className="mt-7 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-[var(--rule)] bg-[var(--rule)]">
+          {[
+            { k: "Attestations", v: totals.attestations },
+            { k: "Author payouts", v: totals.authorsPaid },
+            { k: "Top authors", v: board.length },
+          ].map((t) => (
+            <div key={t.k} className="bg-[var(--paper-2)] p-4 text-center">
+              <div className="serif text-2xl font-semibold text-[var(--accent)]">{t.v}</div>
+              <div className="text-[11px] uppercase tracking-wide text-[var(--muted)]">{t.k}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Leaderboard */}
+      {board.length > 0 ? (
+        <section className="mt-8">
+          <h2 className="serif text-lg font-semibold">Top cited authors</h2>
+          <div className="mt-2 space-y-px overflow-hidden rounded-md border border-[var(--rule)] bg-[var(--rule)]">
+            {board.map((a, i) => (
+              <div key={a.author} className="flex items-center justify-between bg-[var(--paper-2)] px-4 py-2.5 text-xs">
+                <span className="flex items-center gap-3">
+                  <span className="serif w-5 text-[var(--muted)]">{i + 1}</span>
+                  <span className="font-mono">{a.author.slice(0, 8)}…{a.author.slice(-6)}</span>
+                </span>
+                <span className="serif font-semibold text-[var(--accent)]">
+                  {(Number(a.earned) / 1e6).toFixed(2)} USDC
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <h2 className="serif mt-10 text-lg font-semibold">Recent attestations</h2>
+      <div className="mt-2 space-y-px overflow-hidden rounded-md border border-[var(--rule)] bg-[var(--rule)]">
         {events === null ? (
           <div className="bg-[var(--paper-2)] p-6 text-sm text-[var(--muted)]">Loading…</div>
         ) : events.length === 0 ? (
