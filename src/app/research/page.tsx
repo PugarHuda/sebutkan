@@ -7,6 +7,9 @@ import { PERMISSION_CHAIN } from "@/lib/chains";
 import type { ResearchResult } from "@/lib/agent";
 import { AGENT_MESH, narrowedFor } from "@/lib/agents";
 import { redeemViaOneShot } from "@/lib/redeem";
+import { getWalletClient } from "@wagmi/core";
+import { wagmiConfig } from "@/lib/wagmi";
+import type { WalletClient } from "viem";
 
 type ResearchState =
   | { status: "idle" }
@@ -96,11 +99,16 @@ export default function ResearchPage() {
   }, [research.status]);
 
   async function handleRedeem() {
-    if (research.status !== "done" || !walletClient || chainId === undefined) return;
+    if (research.status !== "done" || chainId === undefined) return;
     setRedeem({ status: "redeeming" });
+    const wc = await resolveWalletClient();
+    if (!wc) {
+      setRedeem({ status: "error", message: "Wallet not ready — reconnect MetaMask Flask." });
+      return;
+    }
     try {
       const result = await redeemViaOneShot({
-        walletClient,
+        walletClient: wc,
         chainId,
         payouts: research.result.payouts,
         workUSDC: 0.5,
@@ -157,9 +165,22 @@ export default function ResearchPage() {
 
   const onWrongChain = isConnected && chainId !== PERMISSION_CHAIN.id;
 
+  async function resolveWalletClient(): Promise<WalletClient | null> {
+    if (walletClient) return walletClient;
+    try {
+      return (await getWalletClient(wagmiConfig)) as unknown as WalletClient;
+    } catch {
+      return null;
+    }
+  }
+
   async function handleGrant() {
-    if (!walletClient) return;
     setGrant({ status: "granting" });
+    const wc = await resolveWalletClient();
+    if (!wc) {
+      setGrant({ status: "error", message: "Wallet not ready — reconnect MetaMask Flask and try again." });
+      return;
+    }
     try {
       const params: BudgetParams = {
         sessionAccount: SESSION_ACCOUNT,
@@ -168,7 +189,7 @@ export default function ResearchPage() {
         expiry: Math.floor(Date.now() / 1000) + expiryHours * 3600,
         chainId: PERMISSION_CHAIN.id,
       };
-      const granted = await requestBudgetPermission(walletClient, params);
+      const granted = await requestBudgetPermission(wc, params);
       setGrant({ status: "granted", context: granted });
     } catch (e) {
       setGrant({ status: "error", message: e instanceof Error ? e.message : String(e) });
@@ -269,7 +290,7 @@ export default function ResearchPage() {
           </Field>
           <button
             onClick={handleGrant}
-            disabled={!isConnected || !walletClient || onWrongChain || grant.status === "granting"}
+            disabled={!isConnected || onWrongChain || grant.status === "granting"}
             className="rounded-lg bg-emerald-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-40"
           >
             {grant.status === "granting" ? "Awaiting signature…" : "Grant budget"}
@@ -474,7 +495,7 @@ export default function ResearchPage() {
                     </button>
                     <button
                       onClick={handleRedeem}
-                      disabled={redeem.status === "redeeming" || !walletClient}
+                      disabled={redeem.status === "redeeming"}
                       className="rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-indigo-500 disabled:opacity-40"
                     >
                       {redeem.status === "redeeming" ? "Relaying…" : "2 · Pay authors gasless (1Shot) →"}
