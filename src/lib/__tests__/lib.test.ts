@@ -57,7 +57,7 @@ describe("settlement", () => {
       query: "q",
       amount: 1_000_000n,
       payouts: [
-        { author: demoWallet("a"), authorName: "A", weightBps: 10_000, workTitle: "W", url: "u", claimed: false },
+        { author: demoWallet("a"), authorName: "A", weightBps: 10_000, workTitle: "W", url: "u", identity: "a", claimed: false },
       ],
     });
     expect(data.startsWith("0x")).toBe(true);

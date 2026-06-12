@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAccount, useConnect, useSignMessage } from "wagmi";
+import { useCallback, useEffect, useState } from "react";
+import { useAccount, useConnect, useSignMessage, useWriteContract } from "wagmi";
 import { keccak256, encodePacked, getAddress } from "viem";
+import { ESCROW_ABI } from "@/lib/escrow";
 
 type Status = {
   enabled: boolean;
@@ -25,6 +26,9 @@ export default function ClaimPage() {
   const [orcid, setOrcid] = useState("0000-0002-1825-0097"); // ORCID test record
   const [status, setStatus] = useState<Status | null>(null);
   const [claim, setClaim] = useState<ClaimState>({ status: "idle" });
+  const [owed, setOwed] = useState<bigint>(0n);
+  const [withdrawTx, setWithdrawTx] = useState<string | null>(null);
+  const { writeContractAsync } = useWriteContract();
 
   useEffect(() => {
     fetch("/api/auth/orcid/status")
@@ -34,6 +38,37 @@ export default function ClaimPage() {
   }, []);
 
   const verifiedOrcid = status?.verifiedOrcid ?? null;
+  const escrowAddress = process.env.NEXT_PUBLIC_UNCLAIMED_ESCROW as `0x${string}` | undefined;
+
+  const refreshOwed = useCallback(async () => {
+    if (!verifiedOrcid) return;
+    try {
+      const r = await fetch(`/api/owed?identity=${encodeURIComponent(verifiedOrcid)}`).then((x) => x.json());
+      setOwed(BigInt(r.owedUSDC6 ?? "0"));
+    } catch {
+      setOwed(0n);
+    }
+  }, [verifiedOrcid]);
+
+  useEffect(() => {
+    refreshOwed();
+  }, [refreshOwed, claim.status]);
+
+  async function handleWithdraw() {
+    if (!verifiedOrcid || !escrowAddress) return;
+    try {
+      const tx = await writeContractAsync({
+        address: escrowAddress,
+        abi: ESCROW_ABI,
+        functionName: "withdraw",
+        args: [keccak256(encodePacked(["string"], [verifiedOrcid]))],
+      });
+      setWithdrawTx(tx);
+      setTimeout(refreshOwed, 4000);
+    } catch (e) {
+      setWithdrawTx(`error: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
 
   async function handleBind() {
     if (!address || !verifiedOrcid) return;
@@ -144,6 +179,40 @@ export default function ClaimPage() {
         ) : null}
         {claim.status === "error" ? (
           <p className="rounded-md bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40">{claim.message}</p>
+        ) : null}
+
+        {/* Accrued rewards (UnclaimedEscrow) */}
+        {verifiedOrcid ? (
+          <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium">Rewards waiting for you</span>
+              <span className="font-mono text-sm font-semibold text-emerald-600">
+                {(Number(owed) / 1e6).toFixed(2)} USDC
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-neutral-500">
+              Held on-chain in UnclaimedEscrow for your ORCID until you claim. Bind your wallet above,
+              then withdraw.
+            </p>
+            <button
+              onClick={handleWithdraw}
+              disabled={owed === 0n || !isConnected}
+              className="mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white disabled:opacity-40"
+            >
+              Withdraw {(Number(owed) / 1e6).toFixed(2)} USDC
+            </button>
+            {withdrawTx && !withdrawTx.startsWith("error") ? (
+              <p className="mt-2 text-[11px] text-emerald-700">
+                ✓{" "}
+                <a href={`https://sepolia.etherscan.io/tx/${withdrawTx}`} target="_blank" rel="noreferrer" className="underline">
+                  withdrawal tx
+                </a>
+              </p>
+            ) : null}
+            {withdrawTx?.startsWith("error") ? (
+              <p className="mt-2 text-[11px] text-red-600">{withdrawTx}</p>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </main>

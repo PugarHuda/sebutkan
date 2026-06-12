@@ -51,6 +51,22 @@ contract UnclaimedEscrow {
         emit Recorded(authorHash, amount, owed[authorHash]);
     }
 
+    /// @notice Batch version — one tx for a whole payout's unclaimed authors.
+    function recordMany(bytes32[] calldata hashes, uint256[] calldata amounts)
+        external
+        onlyOperator
+    {
+        uint256 n = hashes.length;
+        require(n == amounts.length, "len");
+        uint256 added;
+        for (uint256 i; i < n; ++i) {
+            owed[hashes[i]] += amounts[i];
+            added += amounts[i];
+            emit Recorded(hashes[i], amounts[i], owed[hashes[i]]);
+        }
+        totalOwed += added;
+    }
+
     /// @notice Withdraw everything owed to an identity — callable only by the
     ///         wallet bound to that identity in NameRegistry.
     function withdraw(bytes32 authorHash) external {

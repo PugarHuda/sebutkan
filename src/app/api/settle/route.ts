@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { operatorAttest, queryIdOf } from "@/lib/settlement";
+import { escrowUnclaimed } from "@/lib/escrow";
 import { getChainCapabilities } from "@/lib/oneshot";
 import { PERMISSION_CHAIN } from "@/lib/chains";
 import type { CitationPayout } from "@/lib/agent";
@@ -61,14 +62,24 @@ export async function POST(req: Request) {
       total,
       payouts: body.payouts,
     });
-    const explorer = `https://sepolia.etherscan.io/tx/${txHash}`;
+
+    // Escrow the shares of authors who haven't claimed a wallet yet (held
+    // on-chain by identity; withdrawable after they bind their ORCID). Best-effort.
+    let escrow: { fundTx: string; recordTx: string; total: string } | null = null;
+    try {
+      escrow = await escrowUnclaimed({ payouts: body.payouts, totalUSDC6: total });
+    } catch {
+      escrow = null;
+    }
+
     return NextResponse.json({
       mode: "attested",
       queryId,
       txHash,
-      explorer,
+      explorer: `https://sepolia.etherscan.io/tx/${txHash}`,
       chain: PERMISSION_CHAIN.name,
       relayer,
+      escrow,
     });
   } catch (e) {
     return NextResponse.json(

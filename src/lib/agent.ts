@@ -17,6 +17,8 @@ export type CitationPayout = {
   weightBps: number;
   workTitle: string;
   url: string;
+  /** Registry identity (ORCID or OpenAlex id) — used to escrow unclaimed shares. */
+  identity: string;
   /** true if the wallet is a real claimed wallet (NameRegistry), false if demo. */
   claimed: boolean;
 };
@@ -53,6 +55,7 @@ export function weightCitations(works: Work[]): CitationPayout[] {
         authorName: a.name,
         workTitle: w.title,
         url: w.url,
+        identity: a.orcid ?? a.id,
         claimed: a.claimed,
         raw: share,
       });
