@@ -91,6 +91,21 @@ contract AttributionLedgerTest is Test {
         ledger.attestAndSplit(keccak256("q5"), 10e6, c);
     }
 
+    function test_attestRecordsWithoutMovingFunds() public {
+        uint256 before = usdc.balanceOf(agent);
+        vm.prank(agent);
+        ledger.attest(keccak256("qa1"), 100e6, _cites(7000, 3000));
+        assertEq(usdc.balanceOf(agent), before, "no funds moved");
+        assertEq(ledger.authorEarnings(alice), 70e6);
+        assertTrue(ledger.attested(keccak256("qa1")));
+    }
+
+    function test_attestRevertsOnBadWeight() public {
+        vm.prank(agent);
+        vm.expectRevert(abi.encodeWithSelector(AttributionLedger.BadWeightSum.selector, 9999));
+        ledger.attest(keccak256("qa2"), 100e6, _cites(7000, 2999));
+    }
+
     /// Fund conservation: authors always receive exactly `amount` in total.
     function testFuzz_fundConservation(uint256 amount, uint16 wA) public {
         amount = bound(amount, 1, 1_000e6);

@@ -74,4 +74,32 @@ contract AttributionLedger {
 
         emit QueryAttested(queryId, msg.sender, amount, n);
     }
+
+    /// @notice Record an on-chain attestation WITHOUT moving funds — for when the
+    ///         payment rail is separate (e.g. gasless USDC transfers relayed via
+    ///         1Shot under a transfer-only ERC-7715 permission). Same validation
+    ///         as attestAndSplit; emits the same events for auditability.
+    function attest(bytes32 queryId, uint256 total, Citation[] calldata cites) external {
+        if (attested[queryId]) revert AlreadyAttested();
+        uint256 n = cites.length;
+        if (n == 0) revert NoCitations();
+
+        uint256 weightSum;
+        for (uint256 i; i < n; ++i) {
+            if (cites[i].author == address(0)) revert ZeroAuthor();
+            weightSum += cites[i].weightBps;
+        }
+        if (weightSum != 10_000) revert BadWeightSum(weightSum);
+
+        attested[queryId] = true;
+        uint256 distributed;
+        for (uint256 i; i < n; ++i) {
+            uint256 share =
+                i == n - 1 ? total - distributed : (total * cites[i].weightBps) / 10_000;
+            distributed += share;
+            authorEarnings[cites[i].author] += share;
+            emit AuthorPaid(queryId, cites[i].author, share, cites[i].weightBps);
+        }
+        emit QueryAttested(queryId, msg.sender, total, n);
+    }
 }

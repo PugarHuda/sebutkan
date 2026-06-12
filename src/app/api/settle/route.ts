@@ -1,19 +1,19 @@
 import { NextResponse } from "next/server";
-import { buildSettlementExecution, queryIdOf } from "@/lib/settlement";
+import { operatorAttest, queryIdOf } from "@/lib/settlement";
 import { getChainCapabilities } from "@/lib/oneshot";
+import { PERMISSION_CHAIN } from "@/lib/chains";
 import type { CitationPayout } from "@/lib/agent";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /**
- * POST /api/settle
- * Body: { query, amountUSDC6, payouts, ledger, chainId? }
+ * POST /api/settle  { query, amountUSDC6, payouts, ledger, chainId? }
  *
- * Builds the attestAndSplit execution that pays cited authors and surfaces the
- * live 1Shot relayer scope (targetAddress = delegation delegate, feeCollector,
- * accepted fee tokens) for the selected chain. The signed-delegation relay
- * (estimate → context → send7710Transaction) is wired in the redemption flow.
+ * Sends a REAL on-chain attestation to AttributionLedger.attest (operator-relayed),
+ * recording who was cited and their share — an auditable on-chain receipt. The
+ * USDC payout itself runs gasless via 1Shot (client "Pay authors gasless" button).
+ * Also surfaces the live 1Shot relayer scope for the chain.
  */
 type Body = {
   query: string;
@@ -34,16 +34,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "query, ledger, payouts required" }, { status: 400 });
   }
 
-  const amount = BigInt(body.amountUSDC6 ?? "0");
-  const execution = buildSettlementExecution({
-    ledger: body.ledger,
-    query: body.query,
-    amount,
-    payouts: body.payouts,
-  });
+  const total = BigInt(body.amountUSDC6 ?? "0");
   const queryId = queryIdOf(body.query);
 
-  // Prove the live 1Shot integration: discover the relayer scope for the chain.
+  // Live 1Shot relayer scope (proves real integration), best-effort.
   const chainId = body.chainId ?? 1;
   let relayer: { targetAddress: string; feeCollector: string; feeTokens: string[] } | null = null;
   try {
@@ -59,5 +53,27 @@ export async function POST(req: Request) {
     relayer = null;
   }
 
-  return NextResponse.json({ mode: "execution", queryId, execution, chainId, relayer });
+  // Real on-chain attestation.
+  try {
+    const txHash = await operatorAttest({
+      ledger: body.ledger,
+      query: body.query,
+      total,
+      payouts: body.payouts,
+    });
+    const explorer = `https://sepolia.etherscan.io/tx/${txHash}`;
+    return NextResponse.json({
+      mode: "attested",
+      queryId,
+      txHash,
+      explorer,
+      chain: PERMISSION_CHAIN.name,
+      relayer,
+    });
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : String(e), queryId, relayer },
+      { status: 502 },
+    );
+  }
 }
