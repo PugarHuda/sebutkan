@@ -35,12 +35,14 @@ export type ResearchResult = {
 
 /**
  * Weight citations across the works' authors. Higher-ranked works get more
- * weight (linear decay), split evenly among that work's authors. Returns
- * basis-point weights that sum to exactly 10_000.
+ * weight (linear decay), split evenly among that work's authors. Capped to the
+ * top `MAX_PAYOUT_AUTHORS` (keeps on-chain attest/redeem gas bounded and avoids
+ * dust splits). Returns basis-point weights that sum to exactly 10_000.
  */
+export const MAX_PAYOUT_AUTHORS = 8;
+
 export function weightCitations(works: Work[]): CitationPayout[] {
-  const flat: Omit<CitationPayout, "weightBps">[] = [];
-  const rawWeights: number[] = [];
+  const flat: (Omit<CitationPayout, "weightBps"> & { raw: number })[] = [];
 
   works.forEach((w, i) => {
     const workWeight = works.length - i; // rank 0 → highest
@@ -52,20 +54,23 @@ export function weightCitations(works: Work[]): CitationPayout[] {
         workTitle: w.title,
         url: w.url,
         claimed: a.claimed,
+        raw: share,
       });
-      rawWeights.push(share);
     }
   });
+  if (flat.length === 0) return [];
 
-  const total = rawWeights.reduce((s, x) => s + x, 0) || 1;
+  // Keep the top contributors, then renormalize their weights to sum to 10_000.
+  const top = flat.sort((a, b) => b.raw - a.raw).slice(0, MAX_PAYOUT_AUTHORS);
+  const total = top.reduce((s, x) => s + x.raw, 0) || 1;
   let distributed = 0;
-  return flat.map((c, i) => {
-    const isLast = i === flat.length - 1;
-    const bps = isLast
-      ? 10_000 - distributed
-      : Math.floor((rawWeights[i] / total) * 10_000);
+  return top.map((c, i) => {
+    const isLast = i === top.length - 1;
+    const bps = isLast ? 10_000 - distributed : Math.floor((c.raw / total) * 10_000);
     distributed += bps;
-    return { ...c, weightBps: bps };
+    const { raw: _raw, ...rest } = c;
+    void _raw;
+    return { ...rest, weightBps: bps };
   });
 }
 
