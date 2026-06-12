@@ -5,6 +5,7 @@ import { useAccount, useConnect, useDisconnect, useWalletClient, useSwitchChain 
 import { requestBudgetPermission, type BudgetParams } from "@/lib/permissions";
 import { PERMISSION_CHAIN } from "@/lib/chains";
 import type { ResearchResult } from "@/lib/agent";
+import Link from "next/link";
 import { AGENT_MESH, narrowedFor } from "@/lib/agents";
 import { redeemViaOneShot } from "@/lib/redeem";
 import { createWalletClient, custom, type WalletClient } from "viem";
@@ -531,7 +532,12 @@ export default function ResearchPage() {
                             {p.claimed ? "claimed" : "demo"}
                           </span>
                         </div>
-                        <div className="font-mono text-[10px] text-neutral-400">{p.author}</div>
+                        <Link
+                          href={`/dashboard/authors/${p.author}`}
+                          className="font-mono text-[10px] text-[var(--muted)] hover:text-[var(--accent)] hover:underline"
+                        >
+                          {p.author}
+                        </Link>
                       </td>
                       <td className="max-w-[180px] truncate pr-2" title={p.workTitle}>
                         <a
