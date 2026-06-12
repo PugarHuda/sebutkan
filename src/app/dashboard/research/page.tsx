@@ -214,21 +214,13 @@ export default function ResearchPage() {
   }
 
   return (
-    <main className="relative mx-auto w-full max-w-3xl px-6 py-12">
-      <header className="mb-10">
-        <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-[11px] uppercase tracking-[0.15em] text-[var(--muted)]">
-          {["non-custodial", "gasless", "one permission", "pays its sources"].map((c, i) => (
-            <span key={c}>
-              {i > 0 ? <span className="mr-4 text-[var(--accent)]">·</span> : null}
-              {c}
-            </span>
-          ))}
-        </div>
-        <h1 className="serif text-5xl font-semibold tracking-tight">Sebutkan</h1>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-[var(--ink)]/75">
-          The research agent that cites <span className="serif italic text-[var(--accent)]">and pays</span> its
-          sources. Grant one scoped budget — it buys papers, reads with Venice, and splits USDC back
-          to every author it cites. Gasless. You never sign again.
+    <main className="mx-auto w-full max-w-3xl px-8 py-10">
+      <header className="mb-8">
+        <p className="text-[11px] uppercase tracking-[0.15em] text-[var(--accent)]">Agent</p>
+        <h1 className="serif mt-1 text-3xl font-semibold tracking-tight">Research</h1>
+        <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--ink)]/70">
+          Grant one scoped budget — the agent buys papers, reads with Venice, and splits USDC back to
+          every author it cites. Gasless, non-custodial.
         </p>
       </header>
 
