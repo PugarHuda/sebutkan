@@ -82,6 +82,11 @@ export async function escrowUnclaimed(args: {
   const unclaimed = args.payouts.filter((p) => !p.claimed && p.identity);
   if (unclaimed.length === 0) return null;
 
+  // Guard: never send USDC to the escrow address unless the contract is actually
+  // deployed there (otherwise funds would arrive with no `owed` recorded).
+  const code = await pub().getCode({ address: ESCROW });
+  if (!code || code === "0x") throw new Error("UnclaimedEscrow not deployed yet");
+
   const hashes = unclaimed.map((p) => authorHash(p.identity));
   const amounts = unclaimed.map((p) => (args.totalUSDC6 * BigInt(p.weightBps)) / 10_000n);
   const sum = amounts.reduce((s, x) => s + x, 0n);
