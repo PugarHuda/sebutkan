@@ -57,6 +57,10 @@ export default function ResearchPage() {
   const [grant, setGrant] = useState<GrantState>({ status: "idle" });
 
   const [query, setQuery] = useState("");
+  const [papers, setPapers] = useState(5);
+  const [fromYear, setFromYear] = useState<number | "">("");
+  const [toYear, setToYear] = useState<number | "">("");
+  const [language, setLanguage] = useState("auto");
   const [research, setResearch] = useState<ResearchState>({ status: "idle" });
   const [settle, setSettle] = useState<SettleState>({ status: "idle" });
   const [redeem, setRedeem] = useState<RedeemState>({ status: "idle" });
@@ -151,7 +155,13 @@ export default function ResearchPage() {
       const res = await fetch("/api/research", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({
+          query,
+          papers,
+          fromYear: fromYear || undefined,
+          toYear: toYear || undefined,
+          language,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
@@ -378,6 +388,54 @@ export default function ResearchPage() {
           </button>
         </div>
 
+        {/* Filters */}
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <Field label="Papers">
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={papers}
+              onChange={(e) => setPapers(Math.min(10, Math.max(1, Number(e.target.value))))}
+              className="w-16 rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 dark:border-neutral-700"
+            />
+          </Field>
+          <Field label="Year from">
+            <input
+              type="number"
+              placeholder="any"
+              value={fromYear}
+              onChange={(e) => setFromYear(e.target.value ? Number(e.target.value) : "")}
+              className="w-20 rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 dark:border-neutral-700"
+            />
+          </Field>
+          <Field label="Year to">
+            <input
+              type="number"
+              placeholder="any"
+              value={toYear}
+              onChange={(e) => setToYear(e.target.value ? Number(e.target.value) : "")}
+              className="w-20 rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 dark:border-neutral-700"
+            />
+          </Field>
+          <Field label="Answer language">
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 dark:border-neutral-700"
+            >
+              <option value="auto">Auto (match question)</option>
+              <option value="English">English</option>
+              <option value="Indonesian">Indonesian</option>
+              <option value="Spanish">Spanish</option>
+              <option value="Arabic">Arabic</option>
+              <option value="Chinese">Chinese</option>
+              <option value="French">French</option>
+              <option value="Japanese">Japanese</option>
+            </select>
+          </Field>
+        </div>
+
         {research.status === "running" ? (
           <ol className="mt-5 space-y-2">
             {RESEARCH_STEPS.map((s, i) => (
@@ -479,8 +537,15 @@ export default function ResearchPage() {
                         </div>
                         <div className="font-mono text-[10px] text-neutral-400">{p.author}</div>
                       </td>
-                      <td className="max-w-[180px] truncate pr-2 text-neutral-500" title={p.workTitle}>
-                        {p.workTitle}
+                      <td className="max-w-[180px] truncate pr-2" title={p.workTitle}>
+                        <a
+                          href={p.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-500"
+                        >
+                          {p.workTitle}
+                        </a>
                       </td>
                       <td className="text-right font-mono font-medium text-emerald-600">{(p.weightBps / 100).toFixed(1)}%</td>
                     </tr>

@@ -54,14 +54,28 @@ type OpenAlexWork = {
   authorships?: { author: { id: string; display_name: string; orcid?: string | null } }[];
 };
 
-/** Search OpenAlex and return the top `limit` works with authors + abstracts. */
-export async function searchCorpus(query: string, limit = 5): Promise<Work[]> {
+export type CorpusOptions = {
+  limit?: number;
+  /** Inclusive publication year range. */
+  fromYear?: number;
+  toYear?: number;
+  /** ISO 639-1 language filter (e.g. "en", "id"). Omit to search all languages. */
+  language?: string;
+};
+
+/** Search OpenAlex and return the top works with authors + abstracts. */
+export async function searchCorpus(query: string, opts: CorpusOptions = {}): Promise<Work[]> {
   const url = new URL("https://api.openalex.org/works");
   url.searchParams.set("search", query);
-  url.searchParams.set("per_page", String(limit));
+  url.searchParams.set("per_page", String(opts.limit ?? 5));
   url.searchParams.set("sort", "relevance_score:desc");
-  // A mailto is polite and gets us the faster pool.
   url.searchParams.set("mailto", "research@sebutkan.app");
+
+  const filters: string[] = [];
+  if (opts.fromYear) filters.push(`from_publication_date:${opts.fromYear}-01-01`);
+  if (opts.toYear) filters.push(`to_publication_date:${opts.toYear}-12-31`);
+  if (opts.language) filters.push(`language:${opts.language}`);
+  if (filters.length) url.searchParams.set("filter", filters.join(","));
 
   const res = await fetch(url, { headers: { accept: "application/json" } });
   if (!res.ok) throw new Error(`OpenAlex ${res.status}: ${await res.text()}`);

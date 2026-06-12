@@ -74,9 +74,21 @@ export function weightCitations(works: Work[]): CitationPayout[] {
   });
 }
 
+export type ResearchOptions = {
+  papers?: number;
+  fromYear?: number;
+  toYear?: number;
+  /** Answer language: "auto" (match the question) or a language name like "English". */
+  language?: string;
+};
+
 /** Run a full research query and return synthesis + payout plan. */
-export async function runResearch(query: string, opts: { papers?: number } = {}): Promise<ResearchResult> {
-  const works = await searchCorpus(query, opts.papers ?? 5);
+export async function runResearch(query: string, opts: ResearchOptions = {}): Promise<ResearchResult> {
+  const works = await searchCorpus(query, {
+    limit: opts.papers ?? 5,
+    fromYear: opts.fromYear,
+    toYear: opts.toYear,
+  });
 
   // No corpus hits → return cleanly with no payouts (UI disables settle/redeem).
   if (works.length === 0) {
@@ -109,6 +121,10 @@ export async function runResearch(query: string, opts: { papers?: number } = {})
     .map((w, i) => `[${i + 1}] "${w.title}" (${w.year ?? "n.d."}) — ${w.authors.map((a) => a.name).join(", ")}\n${w.abstract}`)
     .join("\n\n");
 
+  const lang = opts.language && opts.language !== "auto"
+    ? `Always respond in ${opts.language}.`
+    : "Respond in the same language as the question.";
+
   try {
     const { text, citations } = await veniceChat({
       webSearch: true,
@@ -118,7 +134,7 @@ export async function runResearch(query: string, opts: { papers?: number } = {})
           content:
             "You are a rigorous research assistant. Synthesize a concise, well-structured answer " +
             "grounded in the provided papers and live web search. Cite sources inline as [1], [2]. " +
-            "Be precise and neutral.",
+            `Be precise and neutral. ${lang}`,
         },
         { role: "user", content: `Question: ${query}\n\nCandidate papers:\n${sources}` },
       ],

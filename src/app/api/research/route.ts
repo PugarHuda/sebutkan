@@ -10,7 +10,7 @@ export const maxDuration = 60;
  * citation payout plan the agent will settle via attestAndSplit.
  */
 export async function POST(req: Request) {
-  let body: { query?: string; papers?: number };
+  let body: { query?: string; papers?: number; fromYear?: number; toYear?: number; language?: string };
   try {
     body = await req.json();
   } catch {
@@ -21,7 +21,12 @@ export async function POST(req: Request) {
   if (!query) return NextResponse.json({ error: "query is required" }, { status: 400 });
 
   try {
-    const result = await runResearch(query, { papers: body.papers });
+    const result = await runResearch(query, {
+      papers: body.papers,
+      fromYear: body.fromYear,
+      toYear: body.toYear,
+      language: body.language,
+    });
     return NextResponse.json(result);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
