@@ -216,23 +216,17 @@ export default function ResearchPage() {
   return (
     <main className="relative mx-auto w-full max-w-3xl px-6 py-12">
       <header className="mb-10">
-        <div className="mb-4 flex flex-wrap gap-2">
+        <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-[11px] uppercase tracking-[0.15em] text-[var(--muted)]">
           {["non-custodial", "gasless", "one permission", "pays its sources"].map((c, i) => (
-            <span
-              key={c}
-              className="nb-sm px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-              style={{
-                background: ["var(--amber)", "var(--accent)", "var(--accent-2)", "var(--emerald)"][i],
-                color: i === 0 ? "#1c1a17" : "#fff",
-              }}
-            >
+            <span key={c}>
+              {i > 0 ? <span className="mr-4 text-[var(--accent)]">·</span> : null}
               {c}
             </span>
           ))}
         </div>
-        <h1 className="text-5xl font-black tracking-tight">Sebutkan</h1>
-        <p className="mt-3 max-w-xl text-sm font-medium leading-relaxed text-[var(--ink)]/80">
-          The research agent that cites <span className="bg-[var(--accent)] px-1 font-bold text-white">and pays</span> its
+        <h1 className="serif text-5xl font-semibold tracking-tight">Sebutkan</h1>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-[var(--ink)]/75">
+          The research agent that cites <span className="serif italic text-[var(--accent)]">and pays</span> its
           sources. Grant one scoped budget — it buys papers, reads with Venice, and splits USDC back
           to every author it cites. Gasless. You never sign again.
         </p>
@@ -630,15 +624,15 @@ export default function ResearchPage() {
 }
 
 function Card({ children }: { children: React.ReactNode }) {
-  return <section className="nb mb-6 bg-[var(--paper-2)] p-6">{children}</section>;
+  return <section className="card mb-6 p-6">{children}</section>;
 }
 
 function StepHead({ n, title, children }: { n?: number; title: string; children?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between">
-      <h2 className="flex items-center gap-2.5 text-sm font-extrabold">
+      <h2 className="serif flex items-center gap-2.5 text-base font-semibold">
         {n ? (
-          <span className="nb-sm flex h-6 w-6 items-center justify-center bg-[var(--accent-2)] text-[11px] font-black text-white">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[var(--accent)] text-[11px] font-semibold text-[var(--accent)]">
             {n}
           </span>
         ) : null}

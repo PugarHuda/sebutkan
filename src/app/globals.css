@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
-/* Make `dark:` variants inert (class-based, never set) so the warm theme always
-   renders regardless of OS dark mode. */
+/* Make `dark:` variants inert (class-based, never set) so the warm editorial
+   theme always renders regardless of OS dark mode. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --paper: #f7f0e0; /* warm cream canvas */
-  --paper-2: #fffaf0; /* card surface */
-  --ink: #1c1a17; /* soft near-black for borders/text */
-  --accent: #ff5c38; /* coral */
-  --accent-2: #6c4cff; /* electric violet */
-  --emerald: #0fae7a; /* money / paid */
-  --amber: #ffcf33; /* highlight */
+  --paper: #fcfbf6; /* ivory canvas */
+  --paper-2: #ffffff; /* card surface */
+  --ink: #1b1a17; /* near-black text */
+  --muted: #6f6b62; /* warm gray */
+  --accent: #0b6e4f; /* deep emerald */
+  --accent-soft: #e7f0ea; /* emerald wash */
+  --rule: #e6e2d8; /* hairline */
 }
 
 @theme inline {
@@ -19,6 +19,7 @@
   --color-foreground: var(--ink);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-serif);
 }
 
 body {
@@ -27,28 +28,36 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
-/* ── Neo-brutalist utilities ─────────────────────────────────────────────── */
-.nb {
-  border: 2px solid var(--ink);
-  box-shadow: 4px 4px 0 0 var(--ink);
+/* ── Editorial / academic utilities ──────────────────────────────────────── */
+.serif {
+  font-family: var(--font-serif), Georgia, "Times New Roman", serif;
+  letter-spacing: -0.01em;
 }
-.nb-sm {
-  border: 2px solid var(--ink);
-  box-shadow: 2px 2px 0 0 var(--ink);
+.card {
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
 }
-.nb-press {
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+.rule {
+  border-bottom: 1px solid var(--rule);
 }
-.nb-press:hover {
-  transform: translate(1px, 1px);
-  box-shadow: 3px 3px 0 0 var(--ink);
+.drop-cap::first-letter {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 3.1em;
+  font-weight: 600;
+  float: left;
+  line-height: 0.8;
+  padding: 0.06em 0.1em 0 0;
+  color: var(--accent);
 }
-.nb-press:active {
-  transform: translate(4px, 4px);
-  box-shadow: 0 0 0 0 var(--ink);
+.link-accent {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
 }
 .paper-grid {
-  background-image: radial-gradient(var(--ink) 0.6px, transparent 0.6px);
-  background-size: 18px 18px;
-  opacity: 0.06;
+  background-image: radial-gradient(var(--ink) 0.5px, transparent 0.5px);
+  background-size: 22px 22px;
+  opacity: 0.04;
 }
