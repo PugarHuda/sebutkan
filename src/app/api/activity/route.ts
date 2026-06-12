@@ -17,7 +17,7 @@ export async function GET() {
 
   try {
     const latest = await client.getBlockNumber();
-    const fromBlock = latest > 90_000n ? latest - 90_000n : 0n; // public RPC range cap
+    const fromBlock = latest > 9_000n ? latest - 9_000n : 0n; // free-tier getLogs range cap (10k)
     const logs = await client.getLogs({ address: LEDGER, event: QUERY_ATTESTED, fromBlock, toBlock: latest });
 
     const events = logs
