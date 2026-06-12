@@ -26,6 +26,12 @@ type RedeemState =
   | { status: "done"; result: unknown }
   | { status: "error"; message: string };
 
+type ReceiptState =
+  | { status: "idle" }
+  | { status: "generating" }
+  | { status: "done"; image?: string; audioBase64?: string; degraded?: string }
+  | { status: "error"; message: string };
+
 type GrantState =
   | { status: "idle" }
   | { status: "granting" }
@@ -52,7 +58,26 @@ export default function ResearchPage() {
   const [research, setResearch] = useState<ResearchState>({ status: "idle" });
   const [settle, setSettle] = useState<SettleState>({ status: "idle" });
   const [redeem, setRedeem] = useState<RedeemState>({ status: "idle" });
+  const [receipt, setReceipt] = useState<ReceiptState>({ status: "idle" });
   const [tick, setTick] = useState(0);
+
+  async function handleReceipt() {
+    if (research.status !== "done") return;
+    setReceipt({ status: "generating" });
+    try {
+      const authors = research.result.payouts.map((p) => p.authorName);
+      const res = await fetch("/api/receipt", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: research.result.query, authors, totalUSDC: "0.5 USDC" }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+      setReceipt({ status: "done", ...json });
+    } catch (e) {
+      setReceipt({ status: "error", message: e instanceof Error ? e.message : String(e) });
+    }
+  }
 
   // Live agent ticker while a research request is in flight.
   useEffect(() => {
@@ -380,7 +405,19 @@ export default function ResearchPage() {
                   {research.result.payouts.map((p, i) => (
                     <tr key={i} className="border-t border-neutral-100 dark:border-neutral-800">
                       <td className="py-2 pr-2">
-                        <div className="font-medium text-neutral-800 dark:text-neutral-200">{p.authorName}</div>
+                        <div className="flex items-center gap-1.5 font-medium text-neutral-800 dark:text-neutral-200">
+                          {p.authorName}
+                          <span
+                            className={`rounded px-1 py-0.5 text-[9px] ${
+                              p.claimed
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                                : "bg-neutral-100 text-neutral-400 dark:bg-neutral-800"
+                            }`}
+                            title={p.claimed ? "Real wallet (NameRegistry)" : "Unclaimed — demo wallet. Claim at /claim"}
+                          >
+                            {p.claimed ? "claimed" : "demo"}
+                          </span>
+                        </div>
                         <div className="font-mono text-[10px] text-neutral-400">{p.author}</div>
                       </td>
                       <td className="max-w-[180px] truncate pr-2 text-neutral-500" title={p.workTitle}>
@@ -392,25 +429,67 @@ export default function ResearchPage() {
                 </tbody>
               </table>
 
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-                <button
-                  onClick={handleSettle}
-                  disabled={settle.status === "settling"}
-                  className="rounded-lg bg-emerald-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-40"
-                >
-                  {settle.status === "settling" ? "Settling…" : "Settle & pay authors (0.5 USDC)"}
-                </button>
-                <button
-                  onClick={handleRedeem}
-                  disabled={redeem.status === "redeeming" || !walletClient}
-                  className="rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-indigo-500 disabled:opacity-40"
-                >
-                  {redeem.status === "redeeming" ? "Relaying…" : "Pay authors gasless (1Shot) →"}
-                </button>
-              </div>
-              <p className="mt-2 text-[11px] text-neutral-400">
-                encodes attestAndSplit · or relays USDC splits gasless via the 1Shot permissionless relayer
-              </p>
+              {research.result.payouts.length === 0 ? (
+                <p className="mt-4 text-xs text-neutral-400">No authors to pay for this query.</p>
+              ) : (
+                <>
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={handleSettle}
+                      disabled={settle.status === "settling"}
+                      className="rounded-lg bg-emerald-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-40"
+                    >
+                      {settle.status === "settling" ? "Recording…" : "1 · Record attestation on-chain"}
+                    </button>
+                    <button
+                      onClick={handleRedeem}
+                      disabled={redeem.status === "redeeming" || !walletClient}
+                      className="rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-indigo-500 disabled:opacity-40"
+                    >
+                      {redeem.status === "redeeming" ? "Relaying…" : "2 · Pay authors gasless (1Shot) →"}
+                    </button>
+                    <button
+                      onClick={handleReceipt}
+                      disabled={receipt.status === "generating"}
+                      className="rounded-lg border border-neutral-300 px-4 py-2.5 text-xs font-medium transition hover:bg-neutral-50 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                    >
+                      {receipt.status === "generating" ? "Generating…" : "3 · Venice receipt (image + audio)"}
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[11px] text-neutral-400">
+                    record a real on-chain attestation · relay USDC splits gasless via 1Shot · generate a Venice receipt card + audio briefing
+                  </p>
+                </>
+              )}
+
+              {settle.status === "done" && isAttested(settle.result) ? (
+                <div className="mt-3 rounded-md bg-emerald-50 p-3 text-[11px] dark:bg-emerald-950/40">
+                  ✓ Attested on-chain ·{" "}
+                  <a href={attestedExplorer(settle.result)} target="_blank" rel="noreferrer" className="underline">
+                    view tx on Etherscan
+                  </a>
+                </div>
+              ) : null}
+
+              {receipt.status === "done" ? (
+                <div className="mt-4 space-y-3">
+                  {receipt.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={receipt.image.startsWith("data:") ? receipt.image : `data:image/webp;base64,${receipt.image}`}
+                      alt="Citation receipt"
+                      className="w-full max-w-sm rounded-lg border border-neutral-200 dark:border-neutral-800"
+                    />
+                  ) : null}
+                  {receipt.audioBase64 ? (
+                    <audio controls src={`data:audio/mp3;base64,${receipt.audioBase64}`} className="w-full max-w-sm" />
+                  ) : null}
+                  {receipt.degraded ? (
+                    <p className="text-[11px] text-amber-600">Venice receipt unavailable (no credit): {receipt.degraded}</p>
+                  ) : null}
+                </div>
+              ) : null}
+              {receipt.status === "error" ? <ErrorBox>{receipt.message}</ErrorBox> : null}
 
               {redeem.status === "done" ? (
                 <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-indigo-50 p-3 text-[11px] dark:bg-indigo-950/40">
@@ -418,11 +497,6 @@ export default function ResearchPage() {
                 </pre>
               ) : null}
               {redeem.status === "error" ? <ErrorBox>{redeem.message}</ErrorBox> : null}
-              {settle.status === "done" ? (
-                <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-neutral-100 p-3 text-[11px] dark:bg-neutral-900">
-                  {JSON.stringify(settle.result, null, 2)}
-                </pre>
-              ) : null}
               {settle.status === "error" ? <ErrorBox>{settle.message}</ErrorBox> : null}
             </div>
           </div>
@@ -471,4 +545,11 @@ function ErrorBox({ children }: { children: React.ReactNode }) {
 
 function bigintReplacer(_key: string, value: unknown) {
   return typeof value === "bigint" ? `${value}n` : value;
+}
+
+function isAttested(r: unknown): boolean {
+  return typeof r === "object" && r !== null && (r as { mode?: string }).mode === "attested";
+}
+function attestedExplorer(r: unknown): string {
+  return (r as { explorer?: string })?.explorer ?? "#";
 }
