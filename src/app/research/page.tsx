@@ -7,9 +7,7 @@ import { PERMISSION_CHAIN } from "@/lib/chains";
 import type { ResearchResult } from "@/lib/agent";
 import { AGENT_MESH, narrowedFor } from "@/lib/agents";
 import { redeemViaOneShot } from "@/lib/redeem";
-import { getWalletClient } from "@wagmi/core";
-import { wagmiConfig } from "@/lib/wagmi";
-import type { WalletClient } from "viem";
+import { createWalletClient, custom, type WalletClient } from "viem";
 
 type ResearchState =
   | { status: "idle" }
@@ -168,7 +166,16 @@ export default function ResearchPage() {
   async function resolveWalletClient(): Promise<WalletClient | null> {
     if (walletClient) return walletClient;
     try {
-      return (await getWalletClient(wagmiConfig)) as unknown as WalletClient;
+      const eth = (globalThis as { ethereum?: unknown }).ethereum as
+        | { request: (a: { method: string }) => Promise<string[]> }
+        | undefined;
+      if (!eth) return null;
+      const [account] = await eth.request({ method: "eth_requestAccounts" });
+      return createWalletClient({
+        account: account as `0x${string}`,
+        chain: PERMISSION_CHAIN,
+        transport: custom(eth as Parameters<typeof custom>[0]),
+      });
     } catch {
       return null;
     }
