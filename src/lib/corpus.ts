@@ -63,10 +63,22 @@ export type CorpusOptions = {
   language?: string;
 };
 
+/**
+ * Sanitize a free-text query for OpenAlex's `search` param. OpenAlex treats `?`
+ * and `*` as wildcards that require an exact (no-stem) search and otherwise 400s
+ * — so a natural question like "…methods?" breaks it. Strip wildcard chars and
+ * stray quotes, collapse whitespace. Falls back to the raw query if cleaning
+ * empties it.
+ */
+export function sanitizeQuery(query: string): string {
+  const cleaned = query.replace(/[?*"]/g, " ").replace(/\s+/g, " ").trim();
+  return cleaned || query.trim();
+}
+
 /** Search OpenAlex and return the top works with authors + abstracts. */
 export async function searchCorpus(query: string, opts: CorpusOptions = {}): Promise<Work[]> {
   const url = new URL("https://api.openalex.org/works");
-  url.searchParams.set("search", query);
+  url.searchParams.set("search", sanitizeQuery(query));
   url.searchParams.set("per_page", String(opts.limit ?? 5));
   url.searchParams.set("sort", "relevance_score:desc");
   url.searchParams.set("mailto", "research@sebutkan.app");

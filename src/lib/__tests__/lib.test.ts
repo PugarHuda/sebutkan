@@ -3,7 +3,7 @@ import { weightCitations } from "../agent";
 import { queryIdOf, encodeAttestAndSplit } from "../settlement";
 import { authorHash, bindingMessage, demoWallet } from "../registry";
 import { encodePaymentHeader, decodePaymentHeader, require402, type PaymentPayload } from "../x402";
-import type { Work } from "../corpus";
+import { sanitizeQuery, type Work } from "../corpus";
 
 const work = (id: string, authors: { id: string; name: string }[]): Work => ({
   id,
@@ -30,6 +30,21 @@ describe("weightCitations", () => {
   });
   it("empty works → empty payouts", () => {
     expect(weightCitations([])).toEqual([]);
+  });
+});
+
+describe("sanitizeQuery", () => {
+  it("strips wildcard chars that break OpenAlex (? and *)", () => {
+    expect(sanitizeQuery("What are the best carbon capture methods?")).toBe(
+      "What are the best carbon capture methods",
+    );
+    expect(sanitizeQuery("deep* learning?")).toBe("deep learning");
+  });
+  it("collapses whitespace and trims", () => {
+    expect(sanitizeQuery("  a   b  ")).toBe("a b");
+  });
+  it("falls back to the raw query if cleaning empties it", () => {
+    expect(sanitizeQuery("???")).toBe("???");
   });
 });
 
