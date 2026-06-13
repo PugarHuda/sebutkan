@@ -189,7 +189,15 @@ export async function runResearch(query: string, opts: ResearchOptions = {}): Pr
         searchTerms,
       };
     }
-  } catch {
+  } catch (orchErr) {
+    // TEMP DEBUG: surface why orchestrate failed
+    console.error("ORCHESTRATE_ERROR", orchErr);
+    if (process.env.SEBUTKAN_DEBUG_ORCH) {
+      return {
+        query, synthesis: `DEBUG orch error: ${orchErr instanceof Error ? orchErr.stack ?? orchErr.message : String(orchErr)}`,
+        webCitations: [], works, payouts: weightCitations(works), venice: "fallback", x402, searchTerms,
+      };
+    }
     // fall through to the dev fallback below
   }
 
