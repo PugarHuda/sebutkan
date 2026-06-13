@@ -1,12 +1,15 @@
-# Vercel KV — unlocks 3 features (~2 min, one-time)
+# Vercel KV — OPTIONAL speed-up (not required)
 
-Provisioning a tiny Upstash/Vercel KV makes three serverless features robust across instances:
-1. **Public share links** (`/r/<id>`) — also works on-chain by default (no KV needed), KV just makes it faster.
-2. **Agent memory** — the Planner recalls related prior research across requests (without KV it only persists within one warm serverless instance).
-3. **1Shot webhook status** — the verified webhook status survives across instances.
+Three serverless features need cross-instance state — and **all three already work with zero setup**,
+persisted **on-chain** in ShareRegistry by default (verified live):
+1. **Public share links** (`/r/<id>`) — stored on-chain.
+2. **Agent memory** — the Planner recalls related prior research across requests; the memory index is
+   written on-chain (verified: a run on one serverless instance is recalled by a later run on another).
+3. **1Shot webhook status** — the Ed25519-verified status is persisted on-chain.
 
-All three are fully coded + unit-tested; KV is purely a runtime persistence config. Set
-`KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL`/`_TOKEN`) and redeploy.
+The store precedence is **KV → on-chain → in-memory**. Provisioning KV is **optional**: it's faster and
+saves a little operator gas, but nothing requires it. To enable, set `KV_REST_API_URL` +
+`KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL`/`_TOKEN`) and redeploy.
 
 ---
 
