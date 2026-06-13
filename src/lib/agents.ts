@@ -9,7 +9,7 @@
  */
 
 export type AgentRole = {
-  id: "user" | "researcher" | "reader" | "factchecker" | "summarizer";
+  id: "user" | "researcher" | "planner" | "reader" | "factchecker" | "summarizer";
   label: string;
   blurb: string;
   /** Indent level in the delegation tree (0 = root). */
@@ -43,13 +43,22 @@ export const AGENT_MESH: AgentRole[] = [
     caveats: ["inherits full budget", "may redelegate ≤ its authority", "Venice: crypto-rpc, search"],
   },
   {
+    id: "planner",
+    label: "Planner agent",
+    depth: 1,
+    blurb: "Decomposes the question into focused sub-questions, one per Reader. No spend authority.",
+    budgetFraction: 0,
+    expiryFraction: 1,
+    caveats: ["scope: decompose-only", "budget: none (reasoning)", "Venice: chat"],
+  },
+  {
     id: "reader",
     label: "Reader agent",
     depth: 2,
-    blurb: "Reads the papers and synthesizes a grounded answer with Venice (chat + web search).",
+    blurb: "One per sub-question. Answers its slice from the papers via Venice (chat + web search).",
     budgetFraction: 0.4,
     expiryFraction: 0.5,
-    caveats: ["budget ≤ 40% of parent", "scope: read+synthesize", "Venice: chat, web-search"],
+    caveats: ["budget ≤ 40% of parent", "scope: read+answer one sub-question", "Venice: chat, web-search"],
   },
   {
     id: "factchecker",

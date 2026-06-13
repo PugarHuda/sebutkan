@@ -76,6 +76,23 @@ export function needsRevision(confidence: Confidence): boolean {
   return confidence === "low";
 }
 
+/** Max sub-questions the Planner may emit (bounds the Reader fan-out). */
+export const MAX_SUBQUESTIONS = 3;
+
+/**
+ * Parse the Planner's decomposition into a clean list of sub-questions. Pure +
+ * testable. Strips list markers / numbering, drops empties, caps the count, and
+ * always returns at least the original query so the pipeline never stalls.
+ */
+export function parseSubQuestions(text: string, fallback: string): string[] {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())
+    .filter((l) => l.length > 0 && /[?\w]/.test(l) && !/^sub-?questions?:?$/i.test(l));
+  const cleaned = [...new Set(lines)].slice(0, MAX_SUBQUESTIONS);
+  return cleaned.length ? cleaned : [fallback];
+}
+
 /**
  * Build the literal redelegation hops (C): for each specialist, the concrete
  * narrowed budget/expiry derived from the root grant. Pure + testable — this is
@@ -110,11 +127,14 @@ export function scoreAgents(input: {
   readersUsed: number;
   confidence: Confidence;
   revised: boolean;
+  subQuestions?: number;
 }): { agent: AgentRole["id"]; delta: number; reason: string }[] {
   const out: { agent: AgentRole["id"]; delta: number; reason: string }[] = [];
   out.push({ agent: "researcher", delta: 1, reason: "orchestrated the run" });
+  if (input.subQuestions && input.subQuestions > 1)
+    out.push({ agent: "planner", delta: 1, reason: `decomposed into ${input.subQuestions} sub-questions` });
   if (input.readersUsed > 0)
-    out.push({ agent: "reader", delta: 1, reason: `read ${input.readersUsed} paper(s)` });
+    out.push({ agent: "reader", delta: 1, reason: `answered ${input.readersUsed} sub-question(s)` });
   // The fact-checker earns more when it forced a correction — that's real value.
   out.push({
     agent: "factchecker",
@@ -139,9 +159,6 @@ async function safeChat(
 
 const lang = (language?: string) =>
   language && language !== "auto" ? `Always respond in ${language}.` : "Respond in the same language as the question.";
-
-/** Cap the parallel Reader fan-out to keep Venice cost + latency bounded. */
-const MAX_READERS = 4;
 
 /**
  * Run the full multi-agent orchestration. `works` are the corpus hits the
@@ -170,28 +187,54 @@ export async function orchestrate(
   });
   for (const hop of buildRedelegations(rootBudget, rootExpiry, now)) trace.push(hop);
 
-  // ── Reader fan-out (B): one parallel sub-agent per paper ───────────────────
-  const readPool = works.slice(0, MAX_READERS);
+  // Compact corpus the Readers ground their answers in (shared across the fan-out).
+  const corpus = works
+    .map((w, i) => `[${i + 1}] "${w.title}" (${w.year ?? "n.d."}): ${w.abstract.slice(0, 400)}`)
+    .join("\n");
+
+  // ── Planner (depth 1): decompose the question into focused sub-questions ────
+  const planRes = await safeChat({
+    temperature: 0.3,
+    messages: [
+      {
+        role: "system",
+        content:
+          `You are a Planner agent. Break the user's research question into at most ${MAX_SUBQUESTIONS} focused, ` +
+          "non-overlapping sub-questions that together fully answer it. Output ONLY the sub-questions, one per " +
+          "line, no numbering, no preamble. " + lang(opts.language),
+      },
+      { role: "user", content: query },
+    ],
+  });
+  const subQuestions = planRes ? parseSubQuestions(planRes.text, query) : [query];
+  trace.push({
+    agent: "planner",
+    label: byId("planner").label,
+    action: "decompose",
+    status: planRes ? "ok" : "skipped",
+    detail: planRes
+      ? `Split into ${subQuestions.length} sub-question(s): ${subQuestions.map((q) => `“${q.slice(0, 60)}”`).join("; ")}`
+      : "Planner unavailable — Readers answer the whole question.",
+  });
+
+  // ── Reader fan-out (B): one parallel sub-agent per sub-question ─────────────
   const readerBudget = narrowedFor(byId("reader"), rootBudget, rootExpiry, now).budgetUSDC;
-  const perReader = readPool.length ? readerBudget / readPool.length : 0;
+  const perReader = subQuestions.length ? readerBudget / subQuestions.length : 0;
   const readings = await Promise.all(
-    readPool.map(async (w) => {
+    subQuestions.map(async (sq) => {
       const r = await safeChat({
         temperature: 0.3,
         messages: [
           {
             role: "system",
             content:
-              "You are a Reader agent. In ONE sentence, state the single most important finding of this " +
-              "paper that is relevant to the user's question. No preamble. " + lang(opts.language),
+              "You are a Reader agent assigned ONE sub-question. Answer it concisely using only the provided " +
+              "papers; cite them inline as [n]. If the papers don't cover it, say so. " + lang(opts.language),
           },
-          {
-            role: "user",
-            content: `Question: ${query}\n\nPaper: "${w.title}" (${w.year ?? "n.d."})\n${w.abstract}`,
-          },
+          { role: "user", content: `Sub-question: ${sq}\n\nPapers:\n${corpus}` },
         ],
       });
-      return { work: w, claim: r?.text?.trim() ?? "" };
+      return { sq, claim: r?.text?.trim() ?? "" };
     }),
   );
   const usedReadings = readings.filter((r) => r.claim.length > 0);
@@ -199,17 +242,19 @@ export async function orchestrate(
     trace.push({
       agent: "reader",
       label: byId("reader").label,
-      action: "read",
+      action: "answer sub-question",
       status: r.claim ? "ok" : "skipped",
-      detail: r.claim ? `“${r.claim.slice(0, 120)}${r.claim.length > 120 ? "…" : ""}” — ${r.work.title.slice(0, 50)}` : `skipped: ${r.work.title.slice(0, 60)}`,
+      detail: r.claim
+        ? `“${r.sq.slice(0, 60)}” → ${r.claim.slice(0, 90)}${r.claim.length > 90 ? "…" : ""}`
+        : `skipped: ${r.sq.slice(0, 60)}`,
       budgetUSDC: perReader,
     });
   }
 
-  // ── Synthesizer: merge the readers' findings into a grounded answer ─────────
+  // ── Synthesizer: merge the readers' sub-answers into a grounded answer ──────
   const findings = usedReadings
-    .map((r, i) => `[${i + 1}] ${r.work.title} (${r.work.year ?? "n.d."}): ${r.claim}`)
-    .join("\n");
+    .map((r, i) => `[Sub-Q ${i + 1}] ${r.sq}\n→ ${r.claim}`)
+    .join("\n\n");
   const synthRes = await safeChat({
     webSearch: true,
     messages: [
@@ -324,7 +369,12 @@ export async function orchestrate(
     });
   }
 
-  const reputation = scoreAgents({ readersUsed: usedReadings.length, confidence, revised });
+  const reputation = scoreAgents({
+    readersUsed: usedReadings.length,
+    confidence,
+    revised,
+    subQuestions: subQuestions.length,
+  });
 
   return { synthesis, verification, summary, confidence, rounds, trace, webCitations, reputation };
 }

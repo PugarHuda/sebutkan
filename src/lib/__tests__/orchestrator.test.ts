@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { parseConfidence, needsRevision, buildRedelegations, scoreAgents } from "../orchestrator";
+import {
+  parseConfidence,
+  needsRevision,
+  buildRedelegations,
+  scoreAgents,
+  parseSubQuestions,
+  MAX_SUBQUESTIONS,
+} from "../orchestrator";
 
 describe("parseConfidence", () => {
   it("reads an explicit confidence line", () => {
@@ -45,7 +52,31 @@ describe("buildRedelegations", () => {
   });
 });
 
+describe("parseSubQuestions", () => {
+  it("strips numbering and bullets", () => {
+    const qs = parseSubQuestions("1. What is X?\n2) How does Y work?\n- And Z?", "fallback");
+    expect(qs).toEqual(["What is X?", "How does Y work?", "And Z?"]);
+  });
+  it("caps at MAX_SUBQUESTIONS", () => {
+    const qs = parseSubQuestions("a?\nb?\nc?\nd?\ne?", "fallback");
+    expect(qs.length).toBe(MAX_SUBQUESTIONS);
+  });
+  it("dedupes and drops a 'Sub-questions:' header line", () => {
+    const qs = parseSubQuestions("Sub-questions:\nWhat is X?\nWhat is X?", "fallback");
+    expect(qs).toEqual(["What is X?"]);
+  });
+  it("falls back to the original query when empty", () => {
+    expect(parseSubQuestions("   \n\n", "the original")).toEqual(["the original"]);
+  });
+});
+
 describe("scoreAgents", () => {
+  it("the planner earns only when it actually splits the question", () => {
+    const split = scoreAgents({ readersUsed: 2, confidence: "high", revised: false, subQuestions: 3 });
+    const single = scoreAgents({ readersUsed: 1, confidence: "high", revised: false, subQuestions: 1 });
+    expect(split.find((x) => x.agent === "planner")?.delta).toBe(1);
+    expect(single.find((x) => x.agent === "planner")).toBeUndefined();
+  });
   it("the fact-checker earns more when it forces a revision", () => {
     const noRev = scoreAgents({ readersUsed: 2, confidence: "high", revised: false });
     const rev = scoreAgents({ readersUsed: 2, confidence: "low", revised: true });

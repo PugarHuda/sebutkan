@@ -18,6 +18,14 @@ export const PERMISSION_CHAIN = sepolia;
 /** Chain where x402 + Venice payments settle. */
 export const PAYMENT_CHAIN = base;
 
+/**
+ * Cheap L2 mainnet for the ONE real 1Shot relay the "Best 1Shot Relayer" track
+ * requires (relay 7710 + EIP-7702 on a *mainnet* relayer). Base gas is cents, so
+ * the qualifying relay costs ~$0.01–0.10 in USDC. Verified live: 1Shot `.com`
+ * serves Base (8453), Optimism (10), and Arbitrum (42161). See scripts/relay-mainnet-1shot.mjs.
+ */
+export const ONESHOT_MAINNET_CHAIN = base;
+
 /** USDC token addresses per chain (6 decimals). */
 export const USDC: Record<number, `0x${string}`> = {
   // Base mainnet
