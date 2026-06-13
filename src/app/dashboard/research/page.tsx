@@ -118,6 +118,9 @@ export default function ResearchPage() {
   // Load this device's saved research history once on mount.
   useEffect(() => {
     setHistory(loadHistory());
+    // Pre-fill the query from ?q= (e.g. a "Research this" link from a bounty).
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) setQuery(q);
   }, []);
 
   function restoreFromHistory(entry: HistoryEntry) {

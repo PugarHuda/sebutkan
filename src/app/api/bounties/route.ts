@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createPublicClient, http, parseAbiItem, type Address } from "viem";
 import { PERMISSION_CHAIN } from "@/lib/chains";
+import { resolveBountyTopic } from "../bounty-topic/route";
 
 export const runtime = "nodejs";
 
@@ -25,7 +26,7 @@ export async function GET() {
       client.getLogs({ address: MARKET, event: SETTLED, fromBlock, toBlock: latest }),
     ]);
     const settledIds = new Set(settled.map((l) => String(l.args.id)));
-    const bounties = created
+    const base = created
       .map((l) => ({
         id: String(l.args.id),
         sponsor: l.args.sponsor as string,
@@ -37,6 +38,10 @@ export async function GET() {
       }))
       .reverse()
       .slice(0, 25);
+    // Resolve the readable topic for each bounty (kept off-chain by topicHash).
+    const bounties = await Promise.all(
+      base.map(async (b) => ({ ...b, topic: await resolveBountyTopic(b.topicHash) })),
+    );
     return NextResponse.json({ bounties, market: MARKET });
   } catch (e) {
     return NextResponse.json({ bounties: [], error: e instanceof Error ? e.message : String(e) });

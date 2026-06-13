@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useAccount } from "wagmi";
 import { useWriteContract } from "wagmi";
 import { parseUnits } from "viem";
@@ -15,6 +16,7 @@ type Bounty = {
   expiresAt: number;
   settled: boolean;
   txHash: string;
+  topic?: string | null;
 };
 
 export default function BountiesPage() {
@@ -53,6 +55,13 @@ export default function BountiesPage() {
         functionName: "create",
         args: [topicHash(topic), amt, 7n * 24n * 3600n],
       });
+      // Keep the readable topic (only its hash is on-chain) so the list can show
+      // it and offer a one-click "research this" action.
+      fetch("/api/bounty-topic", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ topicHash: topicHash(topic), topic: topic.trim() }),
+      }).catch(() => {});
       setStatus(`✓ Created (${tx.slice(0, 10)}…). Refreshing…`);
       setTopic("");
       setTimeout(load, 5000);
@@ -117,15 +126,29 @@ export default function BountiesPage() {
           </div>
         ) : (
           bounties.map((b) => (
-            <div key={b.id} className="flex items-center justify-between bg-[var(--paper-2)] px-4 py-3 text-xs">
-              <div>
-                <span className="font-mono text-[var(--muted)]">#{b.id}</span>{" "}
-                <span className="font-mono">{b.topicHash.slice(0, 12)}…</span>
-                <span className="ml-2 text-[10px] text-[var(--muted)]">
-                  by {b.sponsor.slice(0, 6)}…{b.sponsor.slice(-4)}
-                </span>
+            <div key={b.id} className="flex items-center justify-between gap-3 bg-[var(--paper-2)] px-4 py-3 text-xs">
+              <div className="min-w-0">
+                <div className="truncate">
+                  <span className="font-mono text-[var(--muted)]">#{b.id}</span>{" "}
+                  {b.topic ? (
+                    <span className="font-medium text-[var(--ink)]">{b.topic}</span>
+                  ) : (
+                    <span className="font-mono" title={b.topicHash}>{b.topicHash.slice(0, 12)}…</span>
+                  )}
+                </div>
+                <div className="mt-0.5 flex items-center gap-2 text-[10px] text-[var(--muted)]">
+                  <span>by {b.sponsor.slice(0, 6)}…{b.sponsor.slice(-4)}</span>
+                  {b.topic && !b.settled ? (
+                    <Link href={`/dashboard/research?q=${encodeURIComponent(b.topic)}`} className="font-medium text-[var(--accent)] hover:underline">
+                      Research this →
+                    </Link>
+                  ) : null}
+                  <a href={`https://sepolia.etherscan.io/tx/${b.txHash}`} target="_blank" rel="noreferrer" className="hover:text-[var(--accent)] hover:underline">
+                    tx ↗
+                  </a>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex shrink-0 items-center gap-3">
                 <span className="serif font-semibold text-[var(--accent)]">
                   {(Number(b.amount) / 1e6).toFixed(2)} USDC
                 </span>
