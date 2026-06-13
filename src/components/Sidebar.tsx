@@ -8,6 +8,7 @@ const NAV = [
   { href: "/dashboard", label: "Overview", glyph: "◇" },
   { href: "/dashboard/research", label: "Research", glyph: "❝" },
   { href: "/dashboard/agents", label: "Agents", glyph: "✦" },
+  { href: "/dashboard/bounties", label: "Bounties", glyph: "◈" },
   { href: "/dashboard/activity", label: "Activity", glyph: "≣" },
   { href: "/dashboard/claim", label: "Claim & Rewards", glyph: "◉" },
 ];
