@@ -39,7 +39,7 @@ permalink** (`/r/<id>`) — stored on-chain in ShareRegistry by default (zero-in
 - **Real 1Shot** — live `getCapabilities`/`getFeeData`; gasless redeem builds a signed delegation to the relayer `targetAddress`; **Ed25519 webhook** receiver verifies status against the JWKS.
 - **Real multi-agent coordination** — a Planner decomposes the query into a budget-scaled Reader fan-out, a **Citation-Matcher** (Venice embeddings) drives **relevance-weighted payouts**, a Fact-checker forces a Researcher revision on low confidence, and an on-chain ERC-8004 reputation feedback loop rewards contributors (verified: live `bumpReputation` txs). A **literal two-hop redelegation** (User→Researcher→relayer) can be redeemed on a mainnet via 1Shot (`scripts/test-redelegation-1shot.mjs`).
 - **x402 7710 facilitator** — /api/facilitator/{supported,verify,settle}: verifies the ERC-7710 exact payment and settles it gaslessly on the 1Shot relayer (the track's suggested bonus).
-- **Agent memory · auto-Venice receipt · x402-pay-Venice** — the Planner recalls related prior runs; the Venice image+TTS receipt auto-generates in the main flow; the agent can pay Venice itself via x402 (Venice is x402-gated —  reads its live 402).
+- **Agent memory · auto-Venice receipt · x402-pay-Venice** — the Planner recalls related prior runs; the Venice image+TTS receipt auto-generates in the main flow; the agent can pay Venice itself via x402 (Venice is x402-gated — `/api/venice-x402/quote` reads its live 402).
 - **93 tests** — 32 Foundry + 61 Vitest, all green.
 
 ---
@@ -99,7 +99,7 @@ Next.js app ── /research
 
 ✅ Feature-complete. Six contracts live on Sepolia, a 1Shot 7710+7702 relay executed on Base
 mainnet (`0x6f4c8d53…`), the full agent mesh + x402 + ORCID + share links wired and deployed at
-https://sebutkan.vercel.app. 82 tests green. Remaining: record the demo video (`STORYBOARD.md`).
+https://sebutkan.vercel.app. 93 tests green. Remaining: record the demo video (`STORYBOARD.md`).
 
 ## Getting started
 
