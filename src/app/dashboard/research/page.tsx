@@ -41,7 +41,7 @@ type ReceiptState =
 type GrantState =
   | { status: "idle" }
   | { status: "granting" }
-  | { status: "granted"; context: unknown }
+  | { status: "granted"; context: unknown; expiryUnix: number }
   | { status: "error"; message: string };
 
 type FeedbackState =
@@ -76,8 +76,13 @@ export default function ResearchPage() {
   const { data: walletClient } = useWalletClient();
   const { switchChain } = useSwitchChain();
 
-  const [perDay, setPerDay] = useState(10);
-  const [expiryHours, setExpiryHours] = useState(24);
+  // String-backed numeric inputs: a controlled <input type="number"> in React
+  // keeps stale leading zeros ("000.1") because the parsed value doesn't change.
+  // We sanitize the raw string and derive the number from it.
+  const [perDayInput, setPerDayInput] = useState("10");
+  const [expiryHoursInput, setExpiryHoursInput] = useState("24");
+  const perDay = Number(perDayInput) || 0;
+  const expiryHours = Number(expiryHoursInput) || 0;
   const [grant, setGrant] = useState<GrantState>({ status: "idle" });
 
   const [query, setQuery] = useState("");
@@ -339,7 +344,7 @@ export default function ResearchPage() {
           await new Promise((r) => setTimeout(r, 1200 * attempt));
         }
         const granted = await requestBudgetPermission(wc, params);
-        setGrant({ status: "granted", context: granted });
+        setGrant({ status: "granted", context: granted, expiryUnix: params.expiry });
         return;
       } catch (e) {
         lastErr = e instanceof Error ? e.message : String(e);
@@ -442,19 +447,19 @@ export default function ResearchPage() {
         <div className="mt-4 flex flex-wrap items-end gap-4">
           <Field label="USDC / day">
             <input
-              type="number"
-              min={1}
-              value={perDay}
-              onChange={(e) => setPerDay(Number(e.target.value))}
+              type="text"
+              inputMode="decimal"
+              value={perDayInput}
+              onChange={(e) => setPerDayInput(sanitizeDecimal(e.target.value))}
               className="w-24 rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 dark:border-neutral-700"
             />
           </Field>
           <Field label="Expires in (h)">
             <input
-              type="number"
-              min={1}
-              value={expiryHours}
-              onChange={(e) => setExpiryHours(Number(e.target.value))}
+              type="text"
+              inputMode="numeric"
+              value={expiryHoursInput}
+              onChange={(e) => setExpiryHoursInput(sanitizeInteger(e.target.value))}
               className="w-24 rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 dark:border-neutral-700"
             />
           </Field>
@@ -469,6 +474,7 @@ export default function ResearchPage() {
             <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600">✓ permission granted</span>
           ) : null}
         </div>
+        {grant.status === "granted" ? <GrantCountdown expiryUnix={grant.expiryUnix} /> : null}
         {grant.status === "granted" ? (
           <pre className="mt-4 max-h-48 overflow-auto rounded-md bg-neutral-100 p-3 text-[11px] dark:bg-neutral-900">
             {JSON.stringify(grant.context, bigintReplacer, 2)}
@@ -1096,6 +1102,48 @@ function CitedText({ text, works }: { text: string; works: { url: string; title:
         return <span key={i}>{part}</span>;
       })}
     </>
+  );
+}
+
+/** Keep only digits + a single decimal point; strip leading zeros (keeps "0.x"). */
+function sanitizeDecimal(v: string): string {
+  let s = v.replace(/[^\d.]/g, "");
+  const i = s.indexOf(".");
+  if (i !== -1) s = s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, "");
+  return s.replace(/^0+(?=\d)/, "");
+}
+/** Digits only; strip leading zeros. */
+function sanitizeInteger(v: string): string {
+  return v.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+}
+
+/** Live "expires in Xh Ym Zs" countdown for the granted ERC-7715 permission. */
+function GrantCountdown({ expiryUnix }: { expiryUnix: number }) {
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const t = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const left = expiryUnix - now;
+  const expired = left <= 0;
+  const h = Math.floor(left / 3600);
+  const m = Math.floor((left % 3600) / 60);
+  const s = left % 60;
+  const when = new Date(expiryUnix * 1000).toLocaleString();
+  return (
+    <p className={`mt-2 text-[11px] ${expired ? "text-red-600" : "text-[var(--muted)]"}`}>
+      {expired ? (
+        <>⏱ Permission expired — grant again to keep researching.</>
+      ) : (
+        <>
+          ⏱ Budget active —{" "}
+          <span className="font-mono font-medium text-[var(--ink)]">
+            {h}h {m}m {s}s
+          </span>{" "}
+          left (until {when}). The agent can spend within the cap until then.
+        </>
+      )}
+    </p>
   );
 }
 
