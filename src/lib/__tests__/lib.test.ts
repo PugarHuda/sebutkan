@@ -32,6 +32,15 @@ describe("weightCitations", () => {
   it("empty works → empty payouts", () => {
     expect(weightCitations([])).toEqual([]);
   });
+  it("relevance boosts a lower-ranked but more relevant paper", () => {
+    const works = [work("1", [{ id: "a", name: "A" }]), work("2", [{ id: "b", name: "B" }])];
+    // Paper 2 is rank-lower but far more relevant per the Citation-Matcher.
+    const p = weightCitations(works, { [works[0].id]: 0.1, [works[1].id]: 1.0 });
+    const a = p.find((x) => x.authorName === "A")!.weightBps;
+    const b = p.find((x) => x.authorName === "B")!.weightBps;
+    expect(b).toBeGreaterThan(a);
+    expect(p.reduce((s, x) => s + x.weightBps, 0)).toBe(10_000);
+  });
 });
 
 describe("sanitizeQuery", () => {

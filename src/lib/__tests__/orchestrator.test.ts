@@ -6,6 +6,9 @@ import {
   scoreAgents,
   parseSubQuestions,
   MAX_SUBQUESTIONS,
+  cosineSim,
+  readerCountForBudget,
+  settleForConfidence,
 } from "../orchestrator";
 
 describe("parseConfidence", () => {
@@ -49,6 +52,32 @@ describe("buildRedelegations", () => {
   });
   it("expiry never exceeds the root window (24h)", () => {
     expect(hops.every((h) => (h.expiryHours ?? 99) <= 24)).toBe(true);
+  });
+});
+
+describe("cosineSim", () => {
+  it("is 1 for identical vectors and 0 for orthogonal", () => {
+    expect(cosineSim([1, 2, 3], [1, 2, 3])).toBeCloseTo(1);
+    expect(cosineSim([1, 0], [0, 1])).toBeCloseTo(0);
+  });
+  it("is 0 for a zero vector (degenerate)", () => {
+    expect(cosineSim([0, 0], [1, 1])).toBe(0);
+  });
+});
+
+describe("readerCountForBudget", () => {
+  it("scales with budget, clamped to [2,5]", () => {
+    expect(readerCountForBudget(0)).toBe(2);
+    expect(readerCountForBudget(4)).toBe(2);
+    expect(readerCountForBudget(12)).toBe(3);
+    expect(readerCountForBudget(100)).toBe(5);
+  });
+});
+
+describe("settleForConfidence", () => {
+  it("pays more when the research is more confident", () => {
+    expect(settleForConfidence("high")).toBeGreaterThan(settleForConfidence("medium"));
+    expect(settleForConfidence("medium")).toBeGreaterThan(settleForConfidence("low"));
   });
 });
 

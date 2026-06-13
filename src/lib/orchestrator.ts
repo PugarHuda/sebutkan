@@ -21,8 +21,38 @@
  * instead of breaking the whole run — the live demo never hard-fails.
  */
 import type { Work } from "./corpus";
-import { veniceChat } from "./venice";
+import { veniceChat, veniceEmbed } from "./venice";
 import { AGENT_MESH, narrowedFor, type AgentRole } from "./agents";
+
+/** Cosine similarity of two equal-length vectors (0 if degenerate). Pure + testable. */
+export function cosineSim(a: number[], b: number[]): number {
+  let dot = 0;
+  let na = 0;
+  let nb = 0;
+  const n = Math.min(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
+  const d = Math.sqrt(na) * Math.sqrt(nb);
+  return d === 0 ? 0 : dot / d;
+}
+
+/**
+ * How many parallel Reader sub-agents to spawn, scaled to the granted budget.
+ * More budget → deeper coverage. Pure + testable. Clamped to [2, 5].
+ */
+export function readerCountForBudget(budgetUSDC: number): number {
+  const n = Math.round((budgetUSDC || 0) / 4);
+  return Math.max(2, Math.min(5, n || 2));
+}
+
+/** Recommended USDC to settle, scaled by the fact-checker's confidence. */
+export function settleForConfidence(confidence: Confidence, base = 0.5): number {
+  const factor = confidence === "high" ? 1 : confidence === "medium" ? 0.7 : 0.4;
+  return Math.round(base * factor * 100) / 100;
+}
 
 /** A single step in the agent trace shown in the UI (and proof for judges). */
 export type AgentStep = {
@@ -54,6 +84,10 @@ export type OrchestrationResult = {
   webCitations: { title?: string; url?: string }[];
   /** Per-agent reputation deltas to settle on-chain (E). */
   reputation: { agent: AgentRole["id"]; delta: number; reason: string }[];
+  /** Citation-Matcher (Venice embeddings) relevance score per work id, 0–1. */
+  relevance: Record<string, number>;
+  /** Recommended USDC to settle, scaled by confidence (agent economic decision). */
+  recommendedSettleUSDC: number;
 };
 
 const byId = (id: AgentRole["id"]) => AGENT_MESH.find((r) => r.id === id)!;
@@ -84,7 +118,7 @@ export const MAX_SUBQUESTIONS = 3;
  * testable. Strips list markers / numbering, drops empties, caps the count, and
  * always returns at least the original query so the pipeline never stalls.
  */
-export function parseSubQuestions(text: string, fallback: string): string[] {
+export function parseSubQuestions(text: string, fallback: string, maxN: number = MAX_SUBQUESTIONS): string[] {
   let lines = text
     .split(/\r?\n/)
     .map((l) => l.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())
@@ -98,7 +132,7 @@ export function parseSubQuestions(text: string, fallback: string): string[] {
       .map((s) => `${s}?`);
   }
   // Drop a lone sub-question that just echoes the whole question (no real split).
-  const cleaned = [...new Set(lines)].slice(0, MAX_SUBQUESTIONS);
+  const cleaned = [...new Set(lines)].slice(0, Math.max(1, maxN));
   return cleaned.length ? cleaned : [fallback];
 }
 
@@ -183,6 +217,8 @@ export async function orchestrate(
   const rootBudget = opts.rootBudgetUSDC ?? 10;
   const rootExpiry = opts.rootExpiryUnix ?? now + 86_400;
   const trace: AgentStep[] = [];
+  // Budget-scaled fan-out: a larger granted budget buys deeper coverage (#3).
+  const targetSubQ = readerCountForBudget(rootBudget);
 
   // ── Researcher: plan + redelegate (C) ──────────────────────────────────────
   trace.push({
@@ -208,7 +244,7 @@ export async function orchestrate(
       {
         role: "system",
         content:
-          `You are a Planner agent. Decompose research questions into exactly ${MAX_SUBQUESTIONS} focused, ` +
+          `You are a Planner agent. Decompose research questions into exactly ${targetSubQ} focused, ` +
           "non-overlapping sub-questions that together fully answer the original. Each sub-question MUST be " +
           "narrower than the original — never restate it. Output ONLY the sub-questions, one per line, each " +
           "starting with '- ', no numbering, no preamble, no answers. " + lang(opts.language),
@@ -216,18 +252,18 @@ export async function orchestrate(
       {
         role: "user",
         content:
-          `Original question: ${query}\n\nReturn exactly ${MAX_SUBQUESTIONS} narrower sub-questions, one per line, each starting with '- '.`,
+          `Original question: ${query}\n\nReturn exactly ${targetSubQ} narrower sub-questions, one per line, each starting with '- '.`,
       },
     ],
   });
-  const subQuestions = planRes ? parseSubQuestions(planRes.text, query) : [query];
+  const subQuestions = planRes ? parseSubQuestions(planRes.text, query, targetSubQ) : [query];
   trace.push({
     agent: "planner",
     label: byId("planner").label,
     action: "decompose",
     status: planRes ? "ok" : "skipped",
     detail: planRes
-      ? `Split into ${subQuestions.length} sub-question(s): ${subQuestions.map((q) => `“${q.slice(0, 60)}”`).join("; ")}`
+      ? `Split into ${subQuestions.length}/${targetSubQ} sub-question(s) [budget-scaled]: ${subQuestions.map((q) => `“${q.slice(0, 50)}”`).join("; ")}`
       : "Planner unavailable — Readers answer the whole question.",
   });
 
@@ -264,6 +300,35 @@ export async function orchestrate(
       budgetUSDC: perReader,
     });
   }
+
+  // ── Citation-Matcher (Venice embeddings): score each paper's semantic
+  //    relevance to the question. Drives relevance-weighted payouts (#1/#2). ──
+  const relevance: Record<string, number> = {};
+  try {
+    if (works.length) {
+      const texts = [query, ...works.map((w) => `${w.title}. ${w.abstract.slice(0, 400)}`)];
+      const vecs = await veniceEmbed(texts);
+      if (vecs.length === texts.length) {
+        const qv = vecs[0];
+        works.forEach((w, i) => {
+          // Map cosine [-1,1] → [0,1] so it can scale payout weights.
+          relevance[w.id] = Math.max(0, (cosineSim(qv, vecs[i + 1]) + 1) / 2);
+        });
+      }
+    }
+  } catch {
+    /* embeddings unavailable → relevance stays empty (uniform weighting) */
+  }
+  const matched = Object.keys(relevance).length;
+  trace.push({
+    agent: "reader",
+    label: "Citation-Matcher",
+    action: "embed + rank",
+    status: matched ? "ok" : "skipped",
+    detail: matched
+      ? `Venice embeddings scored ${matched} paper(s) by relevance → relevance-weighted payouts.`
+      : "Embeddings unavailable — payouts fall back to rank weighting.",
+  });
 
   // ── Synthesizer: merge the readers' sub-answers into a grounded answer ──────
   const findings = usedReadings
@@ -391,5 +456,16 @@ export async function orchestrate(
     subQuestions: subQuestions.length,
   });
 
-  return { synthesis, verification, summary, confidence, rounds, trace, webCitations, reputation };
+  return {
+    synthesis,
+    verification,
+    summary,
+    confidence,
+    rounds,
+    trace,
+    webCitations,
+    reputation,
+    relevance,
+    recommendedSettleUSDC: settleForConfidence(confidence),
+  };
 }

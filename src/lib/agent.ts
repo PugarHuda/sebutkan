@@ -45,6 +45,10 @@ export type ResearchResult = {
   agentTrace?: AgentStep[];
   /** Per-agent reputation deltas to settle on-chain (ERC-8004 feedback loop). */
   reputation?: { agent: string; delta: number; reason: string }[];
+  /** Citation-Matcher (Venice embeddings) relevance per work id, 0–1. */
+  relevance?: Record<string, number>;
+  /** Recommended USDC to settle, scaled by the fact-checker's confidence. */
+  recommendedSettleUSDC?: number;
 };
 
 /**
@@ -55,11 +59,16 @@ export type ResearchResult = {
  */
 export const MAX_PAYOUT_AUTHORS = 8;
 
-export function weightCitations(works: Work[]): CitationPayout[] {
+export function weightCitations(works: Work[], relevance?: Record<string, number>): CitationPayout[] {
   const flat: (Omit<CitationPayout, "weightBps"> & { raw: number })[] = [];
 
   works.forEach((w, i) => {
-    const workWeight = works.length - i; // rank 0 → highest
+    // Base rank weight, scaled by the Citation-Matcher's embedding relevance when
+    // available (relevant papers earn more; never zeroed out). Falls back to pure
+    // rank when embeddings are unavailable.
+    const rel = relevance?.[w.id];
+    const relFactor = typeof rel === "number" ? 0.25 + 0.75 * rel : 1;
+    const workWeight = (works.length - i) * relFactor; // rank 0 → highest
     const share = w.authors.length ? workWeight / w.authors.length : 0;
     for (const a of w.authors) {
       flat.push({
@@ -158,7 +167,7 @@ export async function runResearch(query: string, opts: ResearchOptions = {}): Pr
         synthesis: o.synthesis,
         webCitations: o.webCitations,
         works,
-        payouts: weightCitations(works),
+        payouts: weightCitations(works, o.relevance),
         venice: "live",
         x402,
         verification: o.verification,
@@ -167,6 +176,8 @@ export async function runResearch(query: string, opts: ResearchOptions = {}): Pr
         rounds: o.rounds,
         agentTrace: o.trace,
         reputation: o.reputation,
+        relevance: o.relevance,
+        recommendedSettleUSDC: o.recommendedSettleUSDC,
       };
     }
   } catch {

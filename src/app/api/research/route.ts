@@ -12,7 +12,14 @@ export const maxDuration = 120;
  * citation payout plan the agent will settle via attestAndSplit.
  */
 export async function POST(req: Request) {
-  let body: { query?: string; papers?: number; fromYear?: number; toYear?: number; language?: string };
+  let body: {
+    query?: string;
+    papers?: number;
+    fromYear?: number;
+    toYear?: number;
+    language?: string;
+    rootBudgetUSDC?: number;
+  };
   try {
     body = await req.json();
   } catch {
@@ -28,6 +35,11 @@ export async function POST(req: Request) {
       fromYear: body.fromYear,
       toYear: body.toYear,
       language: body.language,
+      // Clamp the budget that scales the agent fan-out (public endpoint).
+      rootBudgetUSDC:
+        typeof body.rootBudgetUSDC === "number"
+          ? Math.min(1000, Math.max(0, body.rootBudgetUSDC))
+          : undefined,
     });
     return NextResponse.json(result);
   } catch (e) {

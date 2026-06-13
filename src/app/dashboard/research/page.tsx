@@ -248,6 +248,7 @@ export default function ResearchPage() {
           fromYear: fromYear || undefined,
           toYear: toYear || undefined,
           language,
+          rootBudgetUSDC: perDay, // scales the Planner/Reader fan-out depth
         }),
       });
       const json = await res.json();
@@ -676,6 +677,15 @@ export default function ResearchPage() {
               <h3 className="text-xs font-medium text-neutral-500">
                 Author payout plan — every citation pays its author
               </h3>
+              {typeof research.result.recommendedSettleUSDC === "number" ? (
+                <p className="mt-1 text-[11px] text-[var(--muted)]">
+                  Weighted by the Citation-Matcher’s Venice embeddings · agent-recommended settle:{" "}
+                  <span className="font-medium text-[var(--accent)]">
+                    {research.result.recommendedSettleUSDC.toFixed(2)} USDC
+                  </span>{" "}
+                  (scaled by {research.result.confidence ?? "—"} confidence)
+                </p>
+              ) : null}
               <table className="mt-2 w-full text-left text-xs">
                 <thead className="text-neutral-400">
                   <tr>
