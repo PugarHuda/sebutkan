@@ -13,6 +13,7 @@
  */
 
 import { queryIdOf } from "./settlement";
+import { canReadOnChain, canWriteOnChain, publishOnChain, readOnChain } from "./sharechain";
 
 /** Public share id for a query — first 8 bytes of the same queryId attested on-chain. */
 export function shareIdForQuery(query: string): string {
@@ -25,9 +26,13 @@ const TOKEN_ENV = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_RES
 const TTL_SECONDS = 90 * 24 * 60 * 60; // 90 days
 const PREFIX = "share:";
 
-/** True when a Redis/KV backend is configured. */
-export function isShareConfigured(): boolean {
+function kvConfigured(): boolean {
   return Boolean(URL_ENV && TOKEN_ENV);
+}
+
+/** True when sharing can persist a result (KV configured, or on-chain operator). */
+export function isShareConfigured(): boolean {
+  return kvConfigured() || canWriteOnChain();
 }
 
 /** Run one Redis command via the Upstash REST API. */
@@ -46,14 +51,29 @@ async function command(args: (string | number)[]): Promise<unknown> {
   return json.result;
 }
 
-/** Store a JSON-serializable value under a share id (90-day TTL). */
+/**
+ * Persist a JSON-serializable value under a share id. Prefers KV (fast, 90-day
+ * TTL) when configured; otherwise publishes on-chain via ShareRegistry (durable,
+ * zero-infra — the default so sharing works out of the box).
+ */
 export async function putShared(id: string, value: unknown): Promise<void> {
-  await command(["SET", PREFIX + id, JSON.stringify(value), "EX", TTL_SECONDS]);
+  const json = JSON.stringify(value);
+  if (kvConfigured()) {
+    await command(["SET", PREFIX + id, json, "EX", TTL_SECONDS]);
+    return;
+  }
+  if (canWriteOnChain()) {
+    await publishOnChain(id, json);
+    return;
+  }
+  throw new Error("sharing is not configured");
 }
 
-/** Retrieve a stored value by share id, or null if missing/expired. */
+/** Retrieve a stored value by share id, or null if missing/expired. Tries KV then chain. */
 export async function getShared<T = unknown>(id: string): Promise<T | null> {
-  const raw = (await command(["GET", PREFIX + id])) as string | null;
+  let raw: string | null = null;
+  if (kvConfigured()) raw = (await command(["GET", PREFIX + id])) as string | null;
+  if (!raw && canReadOnChain()) raw = await readOnChain(id);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as T;

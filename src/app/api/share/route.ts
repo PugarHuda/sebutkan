@@ -30,7 +30,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "result.query required" }, { status: 400 });
   }
   const id = shareIdForQuery(result.query);
-  const payload: SharedPayload = { result, savedAt: Date.now(), queryId: queryIdOf(result.query) };
+  // Trim the heavy `works` (abstracts) — the public page doesn't render them, and
+  // it keeps the on-chain JSON small/cheap. payouts keep the per-paper title+url.
+  const slim: ResearchResult = { ...result, works: [] };
+  const payload: SharedPayload = { result: slim, savedAt: Date.now(), queryId: queryIdOf(result.query) };
   try {
     await putShared(id, payload);
     return NextResponse.json({ id, path: `/r/${id}` });
