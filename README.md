@@ -15,8 +15,9 @@ Built for the **MetaMask Smart Accounts Kit × 1Shot API × Venice AI Dev Cook-O
 [`NameRegistry`](https://sepolia.etherscan.io/address/0xE9DC8a36e8f14c85E687eEe26978692dA98cbeab) `0xE9DC…beab` ·
 [`UnclaimedEscrow`](https://sepolia.etherscan.io/address/0x851C251411Fe4F4bab586F775c7450f86A348EAD) `0x851C…8EAD` ·
 [`AgentRegistry8004`](https://sepolia.etherscan.io/address/0x05465b9887D7952fAC76DF42D193aae55EbA5891) `0x0546…5891` ·
-[`BountyMarket`](https://sepolia.etherscan.io/address/0xeC274B5B770e24B0Aef8aF75EAAa7fC9CF7DF5c6) `0xeC27…F5c6`
-(USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet). 58 tests (28 Foundry + 30 Vitest).
+[`BountyMarket`](https://sepolia.etherscan.io/address/0xeC274B5B770e24B0Aef8aF75EAAa7fC9CF7DF5c6) `0xeC27…F5c6` ·
+[`ShareRegistry`](https://sepolia.etherscan.io/address/0x52759E09d3C70ca281c59da3122a7AF8dFA51847) `0x5275…1847`
+(USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet). 68 tests (32 Foundry + 36 Vitest).
 
 **Multi-agent orchestration (real A2A, 5 on-chain agents):** a **Planner** decomposes the question into
 focused sub-questions; the Researcher redelegates strictly-narrowed sub-budgets to a **Reader fan-out**
@@ -28,6 +29,8 @@ is a real ERC-8004 on-chain principal, and contributors **earn on-chain reputati
 relayed **gasless on a mainnet** via 1Shot with an **EIP-7702** upgrade (`scripts/relay-mainnet-1shot.mjs`,
 Base/Optimism/Arbitrum, ~$0.01–0.10 USDC — see [ONESHOT-MAINNET.md](./ONESHOT-MAINNET.md)).
 Unclaimed author shares wait in UnclaimedEscrow (owed recorded on-chain), withdrawable after ORCID claim.
+Finished runs are kept per-device (re-openable after a refresh) and can be **published to a public
+permalink** (`/r/<id>`) — stored on-chain in ShareRegistry by default (zero-infra), or via Vercel KV when set.
 
 ### What's real (no mocks in the critical path)
 - **Real on-chain attestation** — "Record attestation" sends a live `attest()` tx (QueryAttested + AuthorPaid events). e.g. [`0xc61adf4e…`](https://sepolia.etherscan.io/tx/0xc61adf4ee665794ef6a2588c21dd2469ff6d9855129e9d2d0501d94bd1e1c6c8)
