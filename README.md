@@ -16,14 +16,17 @@ Built for the **MetaMask Smart Accounts Kit × 1Shot API × Venice AI Dev Cook-O
 [`UnclaimedEscrow`](https://sepolia.etherscan.io/address/0x851C251411Fe4F4bab586F775c7450f86A348EAD) `0x851C…8EAD` ·
 [`AgentRegistry8004`](https://sepolia.etherscan.io/address/0x05465b9887D7952fAC76DF42D193aae55EbA5891) `0x0546…5891` ·
 [`BountyMarket`](https://sepolia.etherscan.io/address/0xeC274B5B770e24B0Aef8aF75EAAa7fC9CF7DF5c6) `0xeC27…F5c6`
-(USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet). 50 tests (28 Foundry + 22 Vitest).
+(USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet). 58 tests (28 Foundry + 30 Vitest).
 
-**Multi-agent orchestration (real A2A):** the Researcher redelegates strictly-narrowed sub-budgets to a
-**Reader fan-out** (one parallel sub-agent per paper), a **Synthesizer**, and a **Fact-checker** that
-returns a confidence verdict — and on *low* confidence **rejects the answer and forces a Researcher
-revision round** (a genuine coordination loop, not a pipeline). A **Summarizer** condenses the verified
-result. Each agent is a real ERC-8004 on-chain principal, and contributors **earn on-chain reputation**
-after settlement (verified: bumpReputation txs land live) — a feedback loop, not a static badge.
+**Multi-agent orchestration (real A2A, 5 on-chain agents):** a **Planner** decomposes the question into
+focused sub-questions; the Researcher redelegates strictly-narrowed sub-budgets to a **Reader fan-out**
+(one parallel sub-agent per sub-question), a **Synthesizer**, and a **Fact-checker** that returns a
+confidence verdict — and on *low* confidence **rejects the answer and forces a Researcher revision round**
+(a genuine coordination loop, not a pipeline). A **Summarizer** condenses the verified result. Each agent
+is a real ERC-8004 on-chain principal, and contributors **earn on-chain reputation** after settlement
+(verified: live `bumpReputation` txs) — a feedback loop, not a static badge. The author payout can be
+relayed **gasless on a mainnet** via 1Shot with an **EIP-7702** upgrade (`scripts/relay-mainnet-1shot.mjs`,
+Base/Optimism/Arbitrum, ~$0.01–0.10 USDC — see [ONESHOT-MAINNET.md](./ONESHOT-MAINNET.md)).
 Unclaimed author shares wait in UnclaimedEscrow (owed recorded on-chain), withdrawable after ORCID claim.
 
 ### What's real (no mocks in the critical path)
