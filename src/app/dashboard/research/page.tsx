@@ -40,6 +40,12 @@ type GrantState =
   | { status: "granted"; context: unknown }
   | { status: "error"; message: string };
 
+type FeedbackState =
+  | { status: "idle" }
+  | { status: "recording" }
+  | { status: "done"; results: { agent: string; txHash?: string; error?: string }[] }
+  | { status: "error"; message: string };
+
 const SESSION_ACCOUNT =
   (process.env.NEXT_PUBLIC_SESSION_ACCOUNT as `0x${string}`) ??
   "0x000000000000000000000000000000000000dEaD";
@@ -73,6 +79,7 @@ export default function ResearchPage() {
   const [settle, setSettle] = useState<SettleState>({ status: "idle" });
   const [redeem, setRedeem] = useState<RedeemState>({ status: "idle" });
   const [receipt, setReceipt] = useState<ReceiptState>({ status: "idle" });
+  const [feedback, setFeedback] = useState<FeedbackState>({ status: "idle" });
   const [tick, setTick] = useState(0);
 
   async function handleReceipt() {
@@ -150,8 +157,29 @@ export default function ResearchPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       setSettle({ status: "done", result: json });
+      // Reputation feedback loop (E): reward the agents that contributed.
+      recordAgentFeedback();
     } catch (e) {
       setSettle({ status: "error", message: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  async function recordAgentFeedback() {
+    if (research.status !== "done") return;
+    const agents = (research.result.reputation ?? []).map((r) => r.agent);
+    if (!agents.length) return;
+    setFeedback({ status: "recording" });
+    try {
+      const res = await fetch("/api/agents/feedback", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ agents }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+      setFeedback({ status: "done", results: json.results ?? [] });
+    } catch (e) {
+      setFeedback({ status: "error", message: e instanceof Error ? e.message : String(e) });
     }
   }
 
@@ -160,6 +188,7 @@ export default function ResearchPage() {
     setResearch({ status: "running" });
     setSettle({ status: "idle" });
     setRedeem({ status: "idle" });
+    setFeedback({ status: "idle" });
     try {
       const res = await fetch("/api/research", {
         method: "POST",
@@ -495,10 +524,81 @@ export default function ResearchPage() {
               {research.result.synthesis}
             </article>
 
+            {research.result.summary ? (
+              <div className="rounded-md bg-[var(--paper)] p-3">
+                <h3 className="text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">
+                  Summarizer agent · TL;DR
+                </h3>
+                <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--ink)]/90">{research.result.summary}</p>
+              </div>
+            ) : null}
+
+            {research.result.agentTrace?.length ? (
+              <div className="rounded-md border border-[var(--rule)] p-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="serif text-sm font-semibold">Multi-agent trace</h3>
+                  <div className="flex items-center gap-2 text-[10px]">
+                    {research.result.confidence ? (
+                      <span
+                        className={`rounded px-1.5 py-0.5 font-medium ${
+                          research.result.confidence === "high"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : research.result.confidence === "medium"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        confidence: {research.result.confidence}
+                      </span>
+                    ) : null}
+                    {research.result.rounds && research.result.rounds > 1 ? (
+                      <span className="rounded bg-indigo-100 px-1.5 py-0.5 font-medium text-indigo-700">
+                        ↻ {research.result.rounds} rounds (revised)
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+                <ol className="mt-3 space-y-1.5">
+                  {research.result.agentTrace.map((s, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start gap-2.5 text-[11px]"
+                      style={{ marginLeft: s.redelegation ? "16px" : "0" }}
+                    >
+                      <span
+                        className={`mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
+                          s.status === "rejected"
+                            ? "bg-red-500"
+                            : s.status === "revised"
+                              ? "bg-indigo-500"
+                              : s.status === "skipped"
+                                ? "bg-neutral-300"
+                                : "bg-emerald-500"
+                        }`}
+                      />
+                      <div>
+                        <span className="font-medium text-[var(--ink)]">{s.label}</span>{" "}
+                        <span className="text-[var(--muted)]">· {s.action}</span>
+                        {s.redelegation ? (
+                          <span className="ml-1 text-[var(--accent)]">↳ redelegated</span>
+                        ) : null}
+                        {typeof s.budgetUSDC === "number" ? (
+                          <span className="ml-1 font-mono text-[10px] text-emerald-600">
+                            ≤ {s.budgetUSDC.toFixed(2)} USDC
+                          </span>
+                        ) : null}
+                        <p className="text-[var(--ink)]/70">{s.detail}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ) : null}
+
             {research.result.verification ? (
               <div className="rounded-md border-l-2 border-[var(--accent)] bg-[var(--accent-soft)] p-4">
                 <h3 className="serif text-sm font-semibold text-[var(--accent)]">
-                  ❝ Fact-checker agent
+                  ❝ Fact-checker agent {research.result.confidence ? `· ${research.result.confidence} confidence` : ""}
                 </h3>
                 <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-[var(--ink)]/80">
                   {research.result.verification}
@@ -613,6 +713,37 @@ export default function ResearchPage() {
                     view tx on Etherscan
                   </a>
                 </div>
+              ) : null}
+
+              {feedback.status === "recording" ? (
+                <p className="mt-2 text-[11px] text-[var(--muted)]">⟳ Recording agent reputation on-chain (ERC-8004)…</p>
+              ) : null}
+              {feedback.status === "done" ? (
+                <div className="mt-2 rounded-md border border-[var(--rule)] p-3 text-[11px]">
+                  <span className="font-medium text-[var(--accent)]">Agent reputation updated (ERC-8004)</span>
+                  <ul className="mt-1 space-y-0.5">
+                    {feedback.results.map((r) => (
+                      <li key={r.agent} className="flex items-center gap-2">
+                        <span className="capitalize">{r.agent}</span>
+                        {r.txHash ? (
+                          <a
+                            href={`https://sepolia.etherscan.io/tx/${r.txHash}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-mono text-emerald-600 underline"
+                          >
+                            +1 rep ↗
+                          </a>
+                        ) : (
+                          <span className="text-[var(--muted)]">{r.error}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {feedback.status === "error" ? (
+                <p className="mt-2 text-[11px] text-amber-600">Reputation update skipped: {feedback.message}</p>
               ) : null}
 
               {receipt.status === "done" ? (

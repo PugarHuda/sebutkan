@@ -7,8 +7,8 @@
  * makes every citation an on-chain payment to its author.
  */
 import { searchCorpus, type Work } from "./corpus";
-import { veniceChat } from "./venice";
 import { payForResource } from "./x402pay";
+import { orchestrate, type AgentStep, type Confidence } from "./orchestrator";
 import { getAddress } from "viem";
 
 export type CitationPayout = {
@@ -35,6 +35,16 @@ export type ResearchResult = {
   x402: { paid: boolean; txHash?: string; amountUSDC?: string; reason?: string };
   /** Fact-checker agent's independent verification (a 2nd Venice web search). */
   verification?: string;
+  /** Summarizer agent's TL;DR (multi-agent orchestration). */
+  summary?: string;
+  /** Fact-checker's confidence verdict (drives the revision loop). */
+  confidence?: Confidence;
+  /** Synthesis rounds (2 = fact-checker forced a revision). */
+  rounds?: number;
+  /** Full multi-agent trace incl. redelegation hops (A2A coordination). */
+  agentTrace?: AgentStep[];
+  /** Per-agent reputation deltas to settle on-chain (ERC-8004 feedback loop). */
+  reputation?: { agent: string; delta: number; reason: string }[];
 };
 
 /**
@@ -85,6 +95,10 @@ export type ResearchOptions = {
   toYear?: number;
   /** Answer language: "auto" (match the question) or a language name like "English". */
   language?: string;
+  /** Root ERC-7715 budget (USDC) — propagated to per-agent redelegation sub-budgets. */
+  rootBudgetUSDC?: number;
+  /** Root grant expiry (unix) — propagated to per-agent narrowed expiries. */
+  rootExpiryUnix?: number;
 };
 
 /** Run a full research query and return synthesis + payout plan. */
@@ -127,64 +141,46 @@ export async function runResearch(query: string, opts: ResearchOptions = {}): Pr
     }
   }
 
-  const sources = works
-    .map((w, i) => `[${i + 1}] "${w.title}" (${w.year ?? "n.d."}) — ${w.authors.map((a) => a.name).join(", ")}\n${w.abstract}`)
-    .join("\n\n");
-
-  const lang = opts.language && opts.language !== "auto"
-    ? `Always respond in ${opts.language}.`
-    : "Respond in the same language as the question.";
-
+  // Multi-agent orchestration: Researcher redelegates to a Reader fan-out (one
+  // sub-agent per paper), a Synthesizer, a Fact-checker that can force a revision
+  // round, and a Summarizer. Each agent does real Venice work under a narrowed
+  // sub-budget. Degrades cleanly: if Venice has no credit the synthesis comes
+  // back empty and we fall through to the labeled dev fallback below.
   try {
-    const { text, citations } = await veniceChat({
-      webSearch: true,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a rigorous research assistant. Synthesize a concise, well-structured answer " +
-            "grounded in the provided papers and live web search. Cite sources inline as [1], [2]. " +
-            `Be precise and neutral. ${lang}`,
-        },
-        { role: "user", content: `Question: ${query}\n\nCandidate papers:\n${sources}` },
-      ],
+    const o = await orchestrate(query, works, {
+      rootBudgetUSDC: opts.rootBudgetUSDC,
+      rootExpiryUnix: opts.rootExpiryUnix,
+      language: opts.language,
     });
-
-    // Fact-checker agent: an independent 2nd Venice web search that verifies the
-    // synthesis's key claims and flags weak ones (degrades gracefully).
-    let verification: string | undefined;
-    try {
-      const v = await veniceChat({
-        webSearch: true,
-        temperature: 0.2,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a skeptical fact-checker. Independently verify the key claims in the answer " +
-              "using live web search. List any claim that is unsupported, contested, or weak, and give " +
-              "an overall confidence (high/medium/low). Be terse. " + lang,
-          },
-          { role: "user", content: `Question: ${query}\n\nAnswer to verify:\n${text}` },
-        ],
-      });
-      verification = v.text;
-    } catch {
-      verification = undefined;
+    if (o.synthesis) {
+      return {
+        query,
+        synthesis: o.synthesis,
+        webCitations: o.webCitations,
+        works,
+        payouts: weightCitations(works),
+        venice: "live",
+        x402,
+        verification: o.verification,
+        summary: o.summary,
+        confidence: o.confidence,
+        rounds: o.rounds,
+        agentTrace: o.trace,
+        reputation: o.reputation,
+      };
     }
-
-    return { query, synthesis: text, webCitations: citations, works, payouts: weightCitations(works), venice: "live", x402, verification };
-  } catch (e) {
-    // Dev fallback: no Venice credit / 402. Build a synthesis from the abstracts
-    // so the full research → payout → settle flow stays testable for free.
-    // The real demo uses live Venice (this branch is clearly labeled in the UI).
-    const reason = e instanceof Error ? e.message : String(e);
-    const synthesis =
-      `⚠️ Venice fallback (dev mode — no credit): ${reason}\n\n` +
-      `Synthesis for "${query}" drawn from ${works.length} papers:\n\n` +
-      works
-        .map((w, i) => `[${i + 1}] ${w.title} — ${w.abstract.slice(0, 240)}…`)
-        .join("\n\n");
-    return { query, synthesis, webCitations: [], works, payouts: weightCitations(works), venice: "fallback", x402 };
+  } catch {
+    // fall through to the dev fallback below
   }
+
+  // Dev fallback: no Venice credit / 402. Build a synthesis from the abstracts
+  // so the full research → payout → settle flow stays testable for free.
+  // The real demo uses live Venice (this branch is clearly labeled in the UI).
+  const synthesis =
+    `⚠️ Venice fallback (dev mode — no credit).\n\n` +
+    `Synthesis for "${query}" drawn from ${works.length} papers:\n\n` +
+    works
+      .map((w, i) => `[${i + 1}] ${w.title} — ${w.abstract.slice(0, 240)}…`)
+      .join("\n\n");
+  return { query, synthesis, webCitations: [], works, payouts: weightCitations(works), venice: "fallback", x402 };
 }
