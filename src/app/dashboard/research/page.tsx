@@ -11,6 +11,7 @@ import { redeemViaOneShot } from "@/lib/redeem";
 import { loadHistory, saveToHistory, removeFromHistory, clearHistory, type HistoryEntry } from "@/lib/history";
 import { pickFlaskConnector } from "@/lib/wagmi";
 import { DownloadableReceipt } from "@/components/DownloadableReceipt";
+import { FixSepoliaRpcButton } from "@/components/FixSepoliaRpcButton";
 import { createWalletClient, custom, type WalletClient } from "viem";
 
 type ResearchState =
@@ -473,7 +474,19 @@ export default function ResearchPage() {
             {JSON.stringify(grant.context, bigintReplacer, 2)}
           </pre>
         ) : null}
-        {grant.status === "error" ? <ErrorBox>{grant.message}</ErrorBox> : null}
+        {grant.status === "error" ? (
+          <div className="mt-3 space-y-2">
+            <ErrorBox>{grant.message}</ErrorBox>
+            {/rpc|token balance|chain|fetch|infura/i.test(grant.message) ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <FixSepoliaRpcButton />
+                <span className="text-[10px] text-[var(--muted)]">
+                  One click adds a working Sepolia RPC to MetaMask — no manual network form.
+                </span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </Card>
 
       {/* A2A tree */}

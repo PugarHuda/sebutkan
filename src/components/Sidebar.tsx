@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useAccount, useChainId, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import { pickFlaskConnector } from "@/lib/wagmi";
 import { PERMISSION_CHAIN } from "@/lib/chains";
+import { FixSepoliaRpcButton } from "./FixSepoliaRpcButton";
 
 const NAV_SECTIONS: {
   title: string;
@@ -110,17 +111,26 @@ export function Sidebar() {
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" /> Sepolia
                 </div>
               )}
-              <button onClick={() => disconnect()} className="mt-1 text-[10px] text-[var(--muted)] underline">
-                disconnect
+              <div className="mt-2">
+                <FixSepoliaRpcButton className="text-[10px] text-[var(--muted)] underline hover:text-[var(--accent)]" />
+              </div>
+              <button
+                onClick={() => disconnect()}
+                className="mt-2 w-full rounded-md border border-[var(--rule)] px-2 py-1 text-[10px] font-medium text-[var(--ink)]/70 transition hover:border-red-400 hover:text-red-600"
+              >
+                Disconnect
               </button>
             </div>
           ) : flask ? (
-            <button
-              onClick={() => connect({ connector: flask })}
-              className="mt-1.5 w-full rounded-md bg-[var(--accent)] px-3 py-1.5 text-[11px] font-medium text-white"
-            >
-              Connect MetaMask Flask
-            </button>
+            <div className="mt-1.5 space-y-1.5">
+              <button
+                onClick={() => connect({ connector: flask })}
+                className="w-full rounded-md bg-[var(--accent)] px-3 py-1.5 text-[11px] font-medium text-white"
+              >
+                Connect MetaMask Flask
+              </button>
+              <FixSepoliaRpcButton className="text-[10px] text-[var(--muted)] underline hover:text-[var(--accent)]" />
+            </div>
           ) : (
             <a
               href="https://docs.metamask.io/snaps/get-started/install-flask/"
