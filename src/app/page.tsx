@@ -36,6 +36,12 @@ export default function Home() {
             Claim your wallet (authors)
           </Link>
         </div>
+        <p className="mt-4 text-xs text-[var(--muted)]">
+          New here?{" "}
+          <Link href="/docs" className="link-accent font-medium">
+            Read the docs →
+          </Link>
+        </p>
       </section>
 
       <hr className="my-16 w-full max-w-2xl border-[var(--rule)]" />
@@ -90,6 +96,10 @@ export default function Home() {
         <a href="https://github.com/PugarHuda/sebutkan" className="link-accent">
           GitHub
         </a>{" "}
+        ·{" "}
+        <Link href="/docs" className="link-accent">
+          Docs
+        </Link>{" "}
         ·{" "}
         <Link href="/slide" className="link-accent">
           Pitch deck
