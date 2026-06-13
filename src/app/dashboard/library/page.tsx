@@ -145,7 +145,7 @@ export default function LibraryPage() {
 
                 <div className="mt-4 flex items-center gap-2">
                   <Link
-                    href={`/dashboard/research?run=${encodeURIComponent(h.id)}`}
+                    href={`/dashboard/result/${encodeURIComponent(h.id)}`}
                     className="rounded-md bg-[var(--accent)] px-4 py-2 text-xs font-medium text-white"
                   >
                     Open full result →
