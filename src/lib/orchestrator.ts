@@ -85,10 +85,19 @@ export const MAX_SUBQUESTIONS = 3;
  * always returns at least the original query so the pipeline never stalls.
  */
 export function parseSubQuestions(text: string, fallback: string): string[] {
-  const lines = text
+  let lines = text
     .split(/\r?\n/)
     .map((l) => l.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())
-    .filter((l) => l.length > 0 && /[?\w]/.test(l) && !/^sub-?questions?:?$/i.test(l));
+    .filter((l) => l.length > 0 && /\w/.test(l) && !/^(?:sub-?questions?|here are|these are).*:?\s*$/i.test(l));
+  // Model returned everything on one line → split on "?" so we still fan out.
+  if (lines.length === 1 && (lines[0].match(/\?/g)?.length ?? 0) >= 2) {
+    lines = lines[0]
+      .split("?")
+      .map((s) => s.trim())
+      .filter((s) => /\w/.test(s))
+      .map((s) => `${s}?`);
+  }
+  // Drop a lone sub-question that just echoes the whole question (no real split).
   const cleaned = [...new Set(lines)].slice(0, MAX_SUBQUESTIONS);
   return cleaned.length ? cleaned : [fallback];
 }
@@ -194,16 +203,21 @@ export async function orchestrate(
 
   // ── Planner (depth 1): decompose the question into focused sub-questions ────
   const planRes = await safeChat({
-    temperature: 0.3,
+    temperature: 0.4,
     messages: [
       {
         role: "system",
         content:
-          `You are a Planner agent. Break the user's research question into at most ${MAX_SUBQUESTIONS} focused, ` +
-          "non-overlapping sub-questions that together fully answer it. Output ONLY the sub-questions, one per " +
-          "line, no numbering, no preamble. " + lang(opts.language),
+          `You are a Planner agent. Decompose research questions into exactly ${MAX_SUBQUESTIONS} focused, ` +
+          "non-overlapping sub-questions that together fully answer the original. Each sub-question MUST be " +
+          "narrower than the original — never restate it. Output ONLY the sub-questions, one per line, each " +
+          "starting with '- ', no numbering, no preamble, no answers. " + lang(opts.language),
       },
-      { role: "user", content: query },
+      {
+        role: "user",
+        content:
+          `Original question: ${query}\n\nReturn exactly ${MAX_SUBQUESTIONS} narrower sub-questions, one per line, each starting with '- '.`,
+      },
     ],
   });
   const subQuestions = planRes ? parseSubQuestions(planRes.text, query) : [query];
