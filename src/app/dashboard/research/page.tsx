@@ -10,7 +10,7 @@ import { AGENT_MESH, narrowedFor } from "@/lib/agents";
 import { redeemViaOneShot } from "@/lib/redeem";
 import { loadHistory, saveToHistory, removeFromHistory, clearHistory, type HistoryEntry } from "@/lib/history";
 import { pickFlaskConnector } from "@/lib/wagmi";
-import { ReceiptCard } from "@/components/ReceiptCard";
+import { DownloadableReceipt } from "@/components/DownloadableReceipt";
 import { createWalletClient, custom, type WalletClient } from "viem";
 
 type ResearchState =
@@ -315,28 +315,46 @@ export default function ResearchPage() {
       setGrant({ status: "error", message: "Wallet not ready — reconnect MetaMask Flask and try again." });
       return;
     }
-    try {
-      const params: BudgetParams = {
-        sessionAccount: SESSION_ACCOUNT,
-        perPeriodUSDC: perDay,
-        periodSeconds: 86_400,
-        expiry: Math.floor(Date.now() / 1000) + expiryHours * 3600,
-        chainId: PERMISSION_CHAIN.id,
-      };
-      const granted = await requestBudgetPermission(wc, params);
-      setGrant({ status: "granted", context: granted });
-    } catch (e) {
-      const raw = e instanceof Error ? e.message : String(e);
-      let message = raw;
-      if (/failed to fetch token balance and metadata|requested resource not found|unauthorized|json-rpc protocol is not supported/i.test(raw)) {
-        message =
-          "Your wallet couldn't read the USDC token on Sepolia — its network RPC is likely broken or rate-limited. " +
-          "Fix: in MetaMask → Settings → Networks → Sepolia, set the RPC URL to https://ethereum-sepolia-rpc.publicnode.com, then try Grant again.";
-      } else if (/user rejected|denied/i.test(raw)) {
-        message = "You declined the permission request in your wallet.";
+    const params: BudgetParams = {
+      sessionAccount: SESSION_ACCOUNT,
+      perPeriodUSDC: perDay,
+      periodSeconds: 86_400,
+      expiry: Math.floor(Date.now() / 1000) + expiryHours * 3600,
+      chainId: PERMISSION_CHAIN.id,
+    };
+    // The MetaMask Snap reads the USDC token via the wallet's OWN network RPC,
+    // which on Sepolia is frequently rate-limited → "failed to fetch token
+    // balance and metadata". That error is usually transient, so retry a few
+    // times (with backoff) before surfacing the manual-RPC fix.
+    const isTransientRpc = (m: string) =>
+      /failed to fetch token balance and metadata|requested resource not found|rate.?limit|timeout|fetch failed|json-rpc protocol is not supported/i.test(m);
+    const isUserReject = (m: string) => /user rejected|denied|user cancel/i.test(m);
+
+    let lastErr = "";
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        if (attempt > 0) {
+          setGrant({ status: "granting" });
+          await new Promise((r) => setTimeout(r, 1200 * attempt));
+        }
+        const granted = await requestBudgetPermission(wc, params);
+        setGrant({ status: "granted", context: granted });
+        return;
+      } catch (e) {
+        lastErr = e instanceof Error ? e.message : String(e);
+        if (isUserReject(lastErr)) {
+          setGrant({ status: "error", message: "You declined the permission request in your wallet." });
+          return;
+        }
+        if (!isTransientRpc(lastErr)) break; // non-transient → don't waste retries
       }
-      setGrant({ status: "error", message });
     }
+    const message = isTransientRpc(lastErr)
+      ? "Your wallet's Sepolia RPC keeps failing to read the USDC token (often a rate-limited public node). " +
+        "Fix it once: MetaMask → Settings → Networks → Sepolia → RPC URL → https://ethereum-sepolia-rpc.publicnode.com, " +
+        "then click Grant again. (It's a wallet-side network setting, not this site.)"
+      : lastErr;
+    setGrant({ status: "error", message });
   }
 
   return (
@@ -894,7 +912,7 @@ export default function ResearchPage() {
               {/* Canonical on-brand receipt — always shown, consistent design,
                   reproducible from the saved run. Venice image/audio are extras. */}
               <div className="mt-4 space-y-3">
-                <ReceiptCard result={research.result} />
+                <DownloadableReceipt result={research.result} />
                 {receipt.status === "generating" ? (
                   <p className="text-[11px] text-[var(--muted)]">Generating Venice multimodal extras…</p>
                 ) : null}

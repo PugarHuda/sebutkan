@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ResearchResult } from "@/lib/agent";
-import { ReceiptCard } from "./ReceiptCard";
+import { DownloadableReceipt } from "./DownloadableReceipt";
 import { CopyCitationsButton } from "./CopyCitationsButton";
 
 /** Render text with clickable [n] / ^n^ citations linking to the n-th cited paper. */
@@ -239,7 +239,7 @@ export function ResultView({ result }: { result: ResearchResult }) {
             <h3 className="text-xs font-medium text-neutral-500">Citation receipt</h3>
             <CopyCitationsButton result={result} />
           </div>
-          <ReceiptCard result={result} />
+          <DownloadableReceipt result={result} />
         </div>
       ) : null}
     </div>
