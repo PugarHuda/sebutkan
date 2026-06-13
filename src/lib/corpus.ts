@@ -6,6 +6,58 @@
  */
 import { resolveAuthorWallets, demoWallet } from "./registry";
 import { normalizeOrcid } from "./orcid";
+import { veniceChat } from "./venice";
+
+// Conversational/command/filler words (Indonesian + English) that hurt an academic
+// paper search. Stripped as a heuristic fallback when the LLM refinement is down.
+const FILLER = new Set(
+  ("carikan cari carilah tolong mohon coba kasih berikan informasi info tentang mengenai soal " +
+    "skripsi tesis jurnal paper makalah penelitian riset studi artikel apa bagaimana gimana kenapa " +
+    "mengapa yang untuk dari dengan dan atau adalah ada dong ya sih kan nya " +
+    "find search look get show me about information info on the a an of to with and or for " +
+    "thesis paper papers research study studies article what how why which are is most best effective").split(
+    " ",
+  ),
+);
+
+/** Heuristic: strip filler/command words, keep topical keywords. Pure + testable. */
+export function fillerStrip(query: string): string {
+  const kept = query
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/gi, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 1 && !FILLER.has(w));
+  return kept.join(" ").trim() || query.trim();
+}
+
+/**
+ * Turn a free-text (possibly conversational, non-English, typo'd) request into a
+ * clean academic search query for OpenAlex. Uses Venice to fix typos + translate
+ * + keep the core topic; falls back to a heuristic strip if Venice is unavailable.
+ */
+export async function refineQueryForSearch(query: string): Promise<string> {
+  try {
+    const { text } = await veniceChat({
+      temperature: 0.1,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You convert a user's request into a concise English academic search query for a paper " +
+            "database (OpenAlex). Fix typos, translate to English, and output ONLY 2–6 core topic " +
+            "keywords — no commands, no punctuation, no quotes, no explanation.",
+        },
+        { role: "user", content: query },
+      ],
+    });
+    const cleaned = text.trim().replace(/^["'`]|["'`]$/g, "").replace(/\s+/g, " ");
+    // Guard against the model echoing the whole sentence or returning junk.
+    if (cleaned && cleaned.length <= 80 && cleaned.split(" ").length <= 8) return cleaned;
+  } catch {
+    /* fall through to heuristic */
+  }
+  return fillerStrip(query);
+}
 
 export type Author = {
   id: string;

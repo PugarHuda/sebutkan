@@ -587,6 +587,13 @@ export default function ResearchPage() {
                 ○ x402 skipped (agent unfunded)
               </span>
             )}
+            {research.result.searchTerms && research.result.searchTerms.toLowerCase() !== research.result.query.trim().toLowerCase() ? (
+              <p className="text-[11px] text-[var(--muted)]">
+                🔎 Searched OpenAlex (real 250M-paper index) for:{" "}
+                <span className="font-medium text-[var(--accent)]">{research.result.searchTerms}</span>{" "}
+                <span className="text-[var(--muted)]">— cleaned from your query (typos fixed, translated)</span>
+              </p>
+            ) : null}
             <article className="whitespace-pre-wrap rounded-md bg-[var(--paper)] p-4 text-sm leading-relaxed text-[var(--ink)]/90">
               {research.result.synthesis}
             </article>

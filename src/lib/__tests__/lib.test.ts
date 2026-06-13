@@ -4,7 +4,7 @@ import { queryIdOf, encodeAttestAndSplit } from "../settlement";
 import { shareIdForQuery } from "../store";
 import { authorHash, bindingMessage, demoWallet } from "../registry";
 import { encodePaymentHeader, decodePaymentHeader, require402, type PaymentPayload } from "../x402";
-import { sanitizeQuery, type Work } from "../corpus";
+import { sanitizeQuery, fillerStrip, type Work } from "../corpus";
 
 const work = (id: string, authors: { id: string; name: string }[]): Work => ({
   id,
@@ -55,6 +55,16 @@ describe("sanitizeQuery", () => {
   });
   it("falls back to the raw query if cleaning empties it", () => {
     expect(sanitizeQuery("???")).toBe("???");
+  });
+});
+
+describe("fillerStrip", () => {
+  it("strips Indonesian + English command/filler words, keeps the topic", () => {
+    expect(fillerStrip("carikan informasi skripsi tentang automation tools")).toBe("automation tools");
+    expect(fillerStrip("find papers about carbon capture")).toBe("carbon capture");
+  });
+  it("falls back to the raw query if everything is filler", () => {
+    expect(fillerStrip("carikan informasi tentang")).toBe("carikan informasi tentang");
   });
 });
 

@@ -6,7 +6,7 @@
  * settles. Venice does the reasoning (private, uncensored); the payout is what
  * makes every citation an on-chain payment to its author.
  */
-import { searchCorpus, type Work } from "./corpus";
+import { searchCorpus, refineQueryForSearch, type Work } from "./corpus";
 import { payForResource } from "./x402pay";
 import { orchestrate, type AgentStep, type Confidence } from "./orchestrator";
 import { getAddress } from "viem";
@@ -49,6 +49,8 @@ export type ResearchResult = {
   relevance?: Record<string, number>;
   /** Recommended USDC to settle, scaled by the fact-checker's confidence. */
   recommendedSettleUSDC?: number;
+  /** The cleaned academic keywords actually searched on OpenAlex (typo-fixed, translated). */
+  searchTerms?: string;
 };
 
 /**
@@ -117,22 +119,28 @@ export async function runResearch(query: string, opts: ResearchOptions = {}): Pr
   const clampYear = (y?: number) =>
     y && y >= 1800 && y <= 2100 ? Math.floor(y) : undefined;
 
-  const works = await searchCorpus(query, {
-    limit: papers,
-    fromYear: clampYear(opts.fromYear),
-    toYear: clampYear(opts.toYear),
-  });
+  // Turn the (possibly conversational / non-English / typo'd) request into clean
+  // academic keywords before hitting OpenAlex — e.g. "carikan skripsi autamtion
+  // tools" → "automation tools". This is what makes the search robust for real users.
+  const searchOpts = { limit: papers, fromYear: clampYear(opts.fromYear), toYear: clampYear(opts.toYear) };
+  const searchTerms = await refineQueryForSearch(query);
+  let works = await searchCorpus(searchTerms, searchOpts);
+  // Belt-and-braces: if the refined terms found nothing, try the raw query.
+  if (works.length === 0 && searchTerms.toLowerCase() !== query.trim().toLowerCase()) {
+    works = await searchCorpus(query, searchOpts);
+  }
 
   // No corpus hits → return cleanly with no payouts (UI disables settle/redeem).
   if (works.length === 0) {
     return {
       query,
-      synthesis: `No papers found for "${query}". Try a broader or more specific research question.`,
+      synthesis: `No papers found for "${searchTerms}" (searched from "${query}"). Try a broader or more specific research topic.`,
       webCitations: [],
       works: [],
       payouts: [],
       venice: "fallback",
       x402: { paid: false, reason: "no papers" },
+      searchTerms,
     };
   }
 
@@ -178,6 +186,7 @@ export async function runResearch(query: string, opts: ResearchOptions = {}): Pr
         reputation: o.reputation,
         relevance: o.relevance,
         recommendedSettleUSDC: o.recommendedSettleUSDC,
+        searchTerms,
       };
     }
   } catch {
@@ -193,5 +202,5 @@ export async function runResearch(query: string, opts: ResearchOptions = {}): Pr
     works
       .map((w, i) => `[${i + 1}] ${w.title} — ${w.abstract.slice(0, 240)}…`)
       .join("\n\n");
-  return { query, synthesis, webCitations: [], works, payouts: weightCitations(works), venice: "fallback", x402 };
+  return { query, synthesis, webCitations: [], works, payouts: weightCitations(works), venice: "fallback", x402, searchTerms };
 }
