@@ -20,10 +20,10 @@ const REGISTRY = process.env.NEXT_PUBLIC_AGENT_REGISTRY as Address | undefined;
 /** On-chain principals for the mesh (same set the /api/agents reader uses). */
 export const AGENT_ADDRESSES: Record<string, Address> = {
   researcher: "0x55f43e2DF8A86c1D8852A53D00A8D09bC6bA6369",
-  planner: "0x4444444444444444444444444444444444444444",
-  reader: "0x1111111111111111111111111111111111111111",
-  factchecker: "0x2222222222222222222222222222222222222222",
-  summarizer: "0x3333333333333333333333333333333333333333",
+  planner: "0x45a945cdE6376995F1E5Ce94649B8258eb3f07E3",
+  reader: "0x9a838E7ac55BAbFc9f610D87f182294b5166958F",
+  factchecker: "0x817D520025F5cfe811977E3b88DA1Cad324d10a4",
+  summarizer: "0x4896022A94eF9b8d7bA4f66EBD63e7Bb5AcEdDAa",
 };
 
 const BUMP_ABI = [
