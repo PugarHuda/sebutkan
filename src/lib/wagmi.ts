@@ -6,14 +6,16 @@
  */
 import { createConfig, http, type Connector } from "wagmi";
 import { sepolia, base } from "wagmi/chains";
-import { injected } from "wagmi/connectors";
 
-// This is the MetaMask hackathon and ERC-7715 needs MetaMask Flask — connect to
-// the injected MetaMask/Flask extension directly (the MetaMask SDK connector
-// opens an SDK modal/QR instead of the extension, which blocks the click).
+// ERC-7715 needs MetaMask **Flask**. With both regular MetaMask and Flask
+// installed, the shared `window.ethereum` is ambiguous — an `injected()` connector
+// pointing at it can pop up the WRONG wallet (or both). So we rely *only* on
+// EIP-6963 multi-provider discovery, which gives each wallet its own isolated
+// connector (rdns), and the UI connects the Flask one specifically. No generic
+// injected connector → no window.ethereum ambiguity.
 export const wagmiConfig = createConfig({
   chains: [sepolia, base],
-  connectors: [injected({ shimDisconnect: true })],
+  multiInjectedProviderDiscovery: true,
   transports: {
     [sepolia.id]: http(process.env.NEXT_PUBLIC_SEPOLIA_RPC),
     [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC),
