@@ -17,8 +17,9 @@ export const AGENT_MODELS = {
   refine: process.env.VENICE_MODEL_REFINE ?? "mistral-small-3-2-24b-instruct",
   /** Decompose the question into sub-questions. Fast. */
   planner: process.env.VENICE_MODEL_PLANNER ?? "mistral-small-3-2-24b-instruct",
-  /** Read papers + answer a sub-question. Runs in parallel ×N → fast model. */
-  reader: process.env.VENICE_MODEL_READER ?? "mistral-small-3-2-24b-instruct",
+  /** Read papers + answer a sub-question. Runs in parallel ×N — the latency
+   *  bottleneck, so keep it on Venice's own fast model. */
+  reader: process.env.VENICE_MODEL_READER ?? "venice-uncensored",
   /** Merge into a grounded answer (+ web search). Private + uncensored. */
   synth: process.env.VENICE_MODEL_SYNTH ?? "venice-uncensored",
   /** Skeptical verification (+ web search). */
