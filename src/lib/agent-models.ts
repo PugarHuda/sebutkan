@@ -10,22 +10,17 @@
  * reliably supports Venice's server-side web search.
  */
 export const AGENT_MODELS = {
-  // Two models chosen by job (optimal, not variety-for-its-own-sake):
-  //  • a FAST model for the high-frequency routing/reading work, and
-  //  • the capable, web-search-enabled venice-uncensored for synthesis + verification.
-  /** Query → clean academic keywords. Tiny, fast. */
-  refine: process.env.VENICE_MODEL_REFINE ?? "mistral-small-3-2-24b-instruct",
-  /** Decompose the question into sub-questions. Fast. */
-  planner: process.env.VENICE_MODEL_PLANNER ?? "mistral-small-3-2-24b-instruct",
-  /** Read papers + answer a sub-question. Runs in parallel ×N — the latency
-   *  bottleneck, so keep it on Venice's own fast model. */
+  // Each agent's model is INDEPENDENTLY configurable (multi-model ready) — set
+  // VENICE_MODEL_PLANNER, _READER, _FACTCHECK, etc. to route any role to any of
+  // Venice's 250+ models. The default is venice-uncensored: in the live, real-time
+  // orchestration (8 chained/parallel calls) it gave the most reliable low latency;
+  // some alternative models added enough latency to risk the function budget.
+  refine: process.env.VENICE_MODEL_REFINE ?? "venice-uncensored",
+  planner: process.env.VENICE_MODEL_PLANNER ?? "venice-uncensored",
   reader: process.env.VENICE_MODEL_READER ?? "venice-uncensored",
-  /** Merge into a grounded answer (+ web search). Private + uncensored. */
   synth: process.env.VENICE_MODEL_SYNTH ?? "venice-uncensored",
-  /** Skeptical verification (+ web search). */
   factcheck: process.env.VENICE_MODEL_FACTCHECK ?? "venice-uncensored",
-  /** TL;DR. Fast. */
-  summary: process.env.VENICE_MODEL_SUMMARY ?? "mistral-small-3-2-24b-instruct",
+  summary: process.env.VENICE_MODEL_SUMMARY ?? "venice-uncensored",
 } as const;
 
 /** Short label for the UI/trace (drop any provider prefix). */
