@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useConnect, useSignMessage, useWriteContract } from "wagmi";
+import { pickFlaskConnector } from "@/lib/wagmi";
 import { keccak256, encodePacked, getAddress } from "viem";
 import { ESCROW_ABI } from "@/lib/escrow";
 
@@ -104,18 +105,26 @@ export default function ClaimPage() {
         {/* 1. connect wallet */}
         {!isConnected ? (
           <div className="flex flex-wrap gap-2">
-            {connectors
-              .filter((c) => /metamask/i.test(c.name))
-              .filter((c, i, a) => a.findIndex((x) => x.name === c.name) === i)
-              .map((c) => (
+            {(() => {
+              const flask = pickFlaskConnector(connectors);
+              return flask ? (
                 <button
-                  key={c.uid}
-                  onClick={() => connect({ connector: c })}
+                  onClick={() => connect({ connector: flask })}
                   className="rounded-md bg-[var(--accent)] px-4 py-2 text-xs font-medium text-white"
                 >
-                  Connect {c.name}
+                  Connect {flask.name}
                 </button>
-              ))}
+              ) : (
+                <a
+                  href="https://docs.metamask.io/snaps/get-started/install-flask/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-md border border-[var(--rule)] px-4 py-2 text-xs font-medium hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  Install MetaMask Flask →
+                </a>
+              );
+            })()}
           </div>
         ) : (
           <p className="font-mono text-xs text-[var(--muted)]">{address}</p>

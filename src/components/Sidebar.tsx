@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { pickFlaskConnector } from "@/lib/wagmi";
 
 const NAV = [
   { href: "/dashboard", label: "Overview", glyph: "◇" },
@@ -18,9 +19,7 @@ export function Sidebar() {
   const { address, isConnected } = useAccount();
   const { connectors, connect } = useConnect();
   const { disconnect } = useDisconnect();
-  const mm = connectors
-    .filter((c) => /metamask/i.test(c.name))
-    .filter((c) => /flask/i.test(c.name) || connectors.every((x) => !/flask/i.test(x.name)));
+  const flask = pickFlaskConnector(connectors);
 
   return (
     <aside className="sticky top-0 flex h-dvh w-60 shrink-0 flex-col border-r border-[var(--rule)] bg-[var(--paper-2)] px-4 py-5">
@@ -64,12 +63,12 @@ export function Sidebar() {
                 disconnect
               </button>
             </div>
-          ) : mm.length ? (
+          ) : flask ? (
             <button
-              onClick={() => connect({ connector: mm[0] })}
+              onClick={() => connect({ connector: flask })}
               className="mt-1.5 w-full rounded-md bg-[var(--accent)] px-3 py-1.5 text-[11px] font-medium text-white"
             >
-              Connect MetaMask
+              Connect MetaMask Flask
             </button>
           ) : (
             <a
