@@ -73,7 +73,15 @@ export default function BountiesPage() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (/in-flight transaction limit/i.test(msg)) {
-        setStatus("Your wallet still has a pending transaction. Wait a few seconds for it to confirm, then try again.");
+        setStatus("⚠️ Your wallet still has a pending transaction. Wait a few seconds for it to confirm, then try again.");
+      } else if (/unauthorized|json-rpc protocol is not supported|method not (found|supported)/i.test(msg)) {
+        setStatus(
+          "⚠️ Your wallet rejected the payment. This usually means its Sepolia RPC is misconfigured or rate-limited, " +
+            "or the account is a delegated smart account (it granted the agent budget) that MetaMask routes differently. " +
+            "Fix: in MetaMask → Networks → Sepolia, set RPC to https://ethereum-sepolia-rpc.publicnode.com, or sponsor from a fresh wallet that hasn't granted a budget.",
+        );
+      } else if (/user rejected|denied/i.test(msg)) {
+        setStatus("You declined the request in your wallet.");
       } else {
         setStatus(`error: ${msg}`);
       }

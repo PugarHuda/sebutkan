@@ -117,9 +117,21 @@ export default function ResearchPage() {
 
   // Load this device's saved research history once on mount.
   useEffect(() => {
-    setHistory(loadHistory());
-    // Pre-fill the query from ?q= (e.g. a "Research this" link from a bounty).
-    const q = new URLSearchParams(window.location.search).get("q");
+    const hist = loadHistory();
+    setHistory(hist);
+    const params = new URLSearchParams(window.location.search);
+    // ?run=<id> — re-open a saved run (e.g. opened from the Library page).
+    const runId = params.get("run");
+    if (runId) {
+      const entry = hist.find((e) => e.id === runId);
+      if (entry) {
+        setResearch({ status: "done", result: entry.result });
+        setQuery(entry.query);
+        return;
+      }
+    }
+    // ?q= — pre-fill the query (e.g. a "Research this" link from a bounty).
+    const q = params.get("q");
     if (q) setQuery(q);
   }, []);
 

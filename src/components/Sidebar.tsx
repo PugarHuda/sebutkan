@@ -13,7 +13,8 @@ const NAV_SECTIONS: {
     title: "Discover",
     items: [
       { href: "/dashboard", label: "Overview", glyph: "◇", hint: "What Sebutkan is" },
-      { href: "/dashboard/research", label: "Research", glyph: "❝", hint: "Ask · cited papers · results saved here" },
+      { href: "/dashboard/research", label: "Research", glyph: "❝", hint: "Ask · cited papers · pay authors" },
+      { href: "/dashboard/library", label: "Library", glyph: "❑", hint: "All past runs: synthesis, journals, payouts" },
       { href: "/dashboard/agents", label: "Agents", glyph: "✦", hint: "The AI mesh & reputation" },
     ],
   },
