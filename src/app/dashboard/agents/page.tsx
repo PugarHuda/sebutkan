@@ -51,6 +51,11 @@ export default function AgentsPage() {
                   <span className="rounded bg-[var(--accent-soft)] px-2 py-0.5 font-mono text-[11px] text-[var(--accent)]">
                     ≤ {(a.budgetFraction * 100).toFixed(0)}% budget
                   </span>
+                  {a.model ? (
+                    <span className="rounded bg-[var(--paper)] px-2 py-0.5 font-mono text-[11px] text-[var(--ink)]/70" title="Venice model this agent reasons with">
+                      🧠 {a.model}
+                    </span>
+                  ) : null}
                 </div>
               </div>
               <p className="mt-1 text-sm text-[var(--ink)]/70">{a.blurb}</p>

@@ -24,6 +24,7 @@ import type { Work } from "./corpus";
 import { veniceChat, veniceEmbed } from "./venice";
 import { AGENT_MESH, narrowedFor, type AgentRole } from "./agents";
 import { recall, remember } from "./memory";
+import { AGENT_MODELS, modelLabel } from "./agent-models";
 
 /** Cosine similarity of two equal-length vectors (0 if degenerate). Pure + testable. */
 export function cosineSim(a: number[], b: number[]): number {
@@ -256,6 +257,7 @@ export async function orchestrate(
 
   // ── Planner (depth 1): decompose the question into focused sub-questions ────
   const planRes = await safeChat({
+    model: AGENT_MODELS.planner,
     temperature: 0.4,
     messages: [
       {
@@ -280,7 +282,7 @@ export async function orchestrate(
     action: "decompose",
     status: planRes ? "ok" : "skipped",
     detail: planRes
-      ? `Split into ${subQuestions.length}/${targetSubQ} sub-question(s) [budget-scaled]: ${subQuestions.map((q) => `“${q.slice(0, 50)}”`).join("; ")}`
+      ? `[${modelLabel(AGENT_MODELS.planner)}] Split into ${subQuestions.length}/${targetSubQ} sub-question(s): ${subQuestions.map((q) => `“${q.slice(0, 45)}”`).join("; ")}`
       : "Planner unavailable — Readers answer the whole question.",
   });
 
@@ -290,6 +292,7 @@ export async function orchestrate(
   const readings = await Promise.all(
     subQuestions.map(async (sq) => {
       const r = await safeChat({
+        model: AGENT_MODELS.reader,
         temperature: 0.3,
         messages: [
           {
@@ -312,7 +315,7 @@ export async function orchestrate(
       action: "answer sub-question",
       status: r.claim ? "ok" : "skipped",
       detail: r.claim
-        ? `“${r.sq.slice(0, 60)}” → ${r.claim.slice(0, 90)}${r.claim.length > 90 ? "…" : ""}`
+        ? `[${modelLabel(AGENT_MODELS.reader)}] “${r.sq.slice(0, 50)}” → ${r.claim.slice(0, 80)}${r.claim.length > 80 ? "…" : ""}`
         : `skipped: ${r.sq.slice(0, 60)}`,
       budgetUSDC: perReader,
     });
@@ -352,6 +355,7 @@ export async function orchestrate(
     .map((r, i) => `[Sub-Q ${i + 1}] ${r.sq}\n→ ${r.claim}`)
     .join("\n\n");
   const synthRes = await safeChat({
+    model: AGENT_MODELS.synth,
     webSearch: true,
     messages: [
       {
@@ -374,7 +378,7 @@ export async function orchestrate(
     label: byId("researcher").label,
     action: "synthesize",
     status: synthesis ? "ok" : "skipped",
-    detail: synthesis ? "Merged Reader findings into a grounded synthesis." : "Synthesis unavailable.",
+    detail: synthesis ? `[${modelLabel(AGENT_MODELS.synth)}] Merged Reader findings into a grounded synthesis (web-search grounded).` : "Synthesis unavailable.",
   });
 
   // ── Fact-checker (A): independent verify → may REJECT and force a revision ──
@@ -382,6 +386,7 @@ export async function orchestrate(
   let confidence: Confidence = "high";
   let rounds = 1;
   const fcRes = await safeChat({
+    model: AGENT_MODELS.factcheck,
     webSearch: true,
     temperature: 0.2,
     messages: [
@@ -405,7 +410,7 @@ export async function orchestrate(
     action: "verify",
     status: confidence === "low" ? "rejected" : "ok",
     detail: verification
-      ? `Confidence: ${confidence}${confidence === "low" ? " → sending back to Researcher for revision" : ""}`
+      ? `[${modelLabel(AGENT_MODELS.factcheck)}] Confidence: ${confidence}${confidence === "low" ? " → sending back to Researcher for revision" : ""}`
       : "Verification unavailable.",
     budgetUSDC: narrowedFor(byId("factchecker"), rootBudget, rootExpiry, now).budgetUSDC,
   });
@@ -415,6 +420,7 @@ export async function orchestrate(
   if (revised) {
     rounds = 2;
     const revRes = await safeChat({
+      model: AGENT_MODELS.synth,
       // No web search here — the fact-checker already did the grounding; revising
       // from its feedback keeps the worst-case latency inside the function budget.
       messages: [
@@ -446,6 +452,7 @@ export async function orchestrate(
   let summary: string | undefined;
   if (synthesis) {
     const sumRes = await safeChat({
+      model: AGENT_MODELS.summary,
       temperature: 0.3,
       messages: [
         {
@@ -461,7 +468,7 @@ export async function orchestrate(
       label: byId("summarizer").label,
       action: "summarize",
       status: summary ? "ok" : "skipped",
-      detail: summary ? `TL;DR ready (${summary.length} chars).` : "Summary unavailable.",
+      detail: summary ? `[${modelLabel(AGENT_MODELS.summary)}] TL;DR ready (${summary.length} chars).` : "Summary unavailable.",
       budgetUSDC: narrowedFor(byId("summarizer"), rootBudget, rootExpiry, now).budgetUSDC,
     });
   }

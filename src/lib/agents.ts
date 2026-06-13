@@ -20,7 +20,11 @@ export type AgentRole = {
   expiryFraction: number;
   /** Human description of the narrowing caveats applied at this hop. */
   caveats: string[];
+  /** The Venice model this agent reasons with (multi-model: right tool per job). */
+  model?: string;
 };
+
+import { AGENT_MODELS } from "./agent-models";
 
 /** The delegation chain, root → leaf. Each hop strictly narrows authority. */
 export const AGENT_MESH: AgentRole[] = [
@@ -41,6 +45,7 @@ export const AGENT_MESH: AgentRole[] = [
     budgetFraction: 1,
     expiryFraction: 1,
     caveats: ["inherits full budget", "may redelegate ≤ its authority", "Venice: crypto-rpc, search"],
+    model: AGENT_MODELS.synth,
   },
   {
     id: "planner",
@@ -50,6 +55,7 @@ export const AGENT_MESH: AgentRole[] = [
     budgetFraction: 0,
     expiryFraction: 1,
     caveats: ["scope: decompose-only", "budget: none (reasoning)", "Venice: chat"],
+    model: AGENT_MODELS.planner,
   },
   {
     id: "reader",
@@ -59,6 +65,7 @@ export const AGENT_MESH: AgentRole[] = [
     budgetFraction: 0.4,
     expiryFraction: 0.5,
     caveats: ["budget ≤ 40% of parent", "scope: read+answer one sub-question", "Venice: chat, web-search"],
+    model: AGENT_MODELS.reader,
   },
   {
     id: "factchecker",
@@ -68,6 +75,7 @@ export const AGENT_MESH: AgentRole[] = [
     budgetFraction: 0.15,
     expiryFraction: 0.35,
     caveats: ["budget ≤ 15% of parent", "scope: verify-only", "Venice: web-search"],
+    model: AGENT_MODELS.factcheck,
   },
   {
     id: "summarizer",
@@ -77,6 +85,7 @@ export const AGENT_MESH: AgentRole[] = [
     budgetFraction: 0.05,
     expiryFraction: 0.25,
     caveats: ["budget ≤ 5% of parent", "expiry ≤ 25% of parent", "scope: summarize-only"],
+    model: AGENT_MODELS.summary,
   },
 ];
 

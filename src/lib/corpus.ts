@@ -7,6 +7,7 @@
 import { resolveAuthorWallets, demoWallet } from "./registry";
 import { normalizeOrcid } from "./orcid";
 import { veniceChat } from "./venice";
+import { AGENT_MODELS } from "./agent-models";
 
 // Conversational/command/filler words (Indonesian + English) that hurt an academic
 // paper search. Stripped as a heuristic fallback when the LLM refinement is down.
@@ -38,6 +39,7 @@ export function fillerStrip(query: string): string {
 export async function refineQueryForSearch(query: string): Promise<string> {
   try {
     const { text } = await veniceChat({
+      model: AGENT_MODELS.refine,
       temperature: 0.1,
       messages: [
         {
