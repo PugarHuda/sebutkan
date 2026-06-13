@@ -382,7 +382,9 @@ export default function ResearchPage() {
       <Card>
         <StepHead n={2} title="Grant a periodic USDC budget (ERC-7715)" />
         <p className="mt-1 text-xs text-neutral-500">
-          One signature creates an ERC-7710 delegation. The agent can never spend beyond this.
+          One signature creates an ERC-7710 delegation — a <b>daily spending ceiling</b>, not an
+          up-front charge. Nothing leaves your wallet now; the agent only spends a tiny micropayment
+          (~0.01 USDC) per run when it buys a paper, and never beyond this cap.
         </p>
         <p className="mt-2 rounded-md bg-[var(--accent-soft)] px-3 py-2 text-[11px] text-[var(--ink)]/75">
           💡 A bigger budget buys <b>deeper research</b>: it scales the agent fan-out
@@ -590,6 +592,18 @@ export default function ResearchPage() {
                 ○ x402 skipped (agent unfunded)
               </span>
             )}
+            {/* Spend vs cap — the grant is a daily CEILING, not an up-front charge.
+                Makes it unambiguous that research spends a tiny per-run micropayment
+                (or 0 when unfunded), never the whole daily budget. */}
+            <p className="text-[11px] text-[var(--muted)]">
+              💸 Agent spend this run:{" "}
+              <span className="font-medium text-[var(--ink)]">
+                {(research.result.x402?.paid ? Number(research.result.x402.amountUSDC) : 0).toFixed(2)} USDC
+              </span>{" "}
+              of your <span className="font-medium text-[var(--ink)]">{perDay.toFixed(2)} USDC/day</span> limit
+              {" "}— the grant is a <span className="font-medium">ceiling</span>, never charged up-front. Unused budget stays in your wallet (≈{" "}
+              {Math.max(0, Math.floor(perDay / 0.01))} more runs today at 0.01 USDC each).
+            </p>
             {research.result.searchTerms && research.result.searchTerms.toLowerCase() !== research.result.query.trim().toLowerCase() ? (
               <p className="text-[11px] text-[var(--muted)]">
                 🔎 Searched OpenAlex (real 250M-paper index) for:{" "}
