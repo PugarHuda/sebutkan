@@ -12,8 +12,22 @@
  * unaffected. Results are stored with a 90-day TTL.
  */
 
+import { gzipSync, gunzipSync } from "node:zlib";
 import { queryIdOf } from "./settlement";
 import { canReadOnChain, canWriteOnChain, publishOnChain, readOnChain } from "./sharechain";
+
+/** gzip+base64 a JSON string (tagged so reads can detect compression). */
+function pack(json: string): string {
+  return `gz:${gzipSync(Buffer.from(json, "utf8")).toString("base64")}`;
+}
+/** Inverse of pack(); passes through legacy uncompressed values. */
+function unpack(raw: string): string {
+  if (!raw.startsWith("gz:")) return raw;
+  return gunzipSync(Buffer.from(raw.slice(3), "base64")).toString("utf8");
+}
+
+/** On-chain storage is gas-bound; reject blobs that won't fit a sane gas budget. */
+const MAX_ONCHAIN_BYTES = 2_048;
 
 /** Public share id for a query — first 8 bytes of the same queryId attested on-chain. */
 export function shareIdForQuery(query: string): string {
@@ -57,13 +71,26 @@ async function command(args: (string | number)[]): Promise<unknown> {
  * zero-infra — the default so sharing works out of the box).
  */
 export async function putShared(id: string, value: unknown): Promise<void> {
-  const json = JSON.stringify(value);
+  const packed = pack(JSON.stringify(value));
   if (kvConfigured()) {
-    await command(["SET", PREFIX + id, json, "EX", TTL_SECONDS]);
+    await command(["SET", PREFIX + id, packed, "EX", TTL_SECONDS]);
     return;
   }
   if (canWriteOnChain()) {
-    await publishOnChain(id, json);
+    // On-chain storage costs gas per byte — guard size, and turn the node's raw
+    // "gas required exceeds allowance" revert into an actionable message.
+    if (Buffer.byteLength(packed, "utf8") > MAX_ONCHAIN_BYTES) {
+      throw new Error("result too large to publish on-chain — enable KV for unlimited sharing (see SHARE-SETUP.md)");
+    }
+    try {
+      await publishOnChain(id, packed);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/allowance|insufficient funds|exceeds/i.test(msg)) {
+        throw new Error("on-chain publish failed (operator out of Sepolia gas) — top up the operator or enable KV (SHARE-SETUP.md)");
+      }
+      throw e;
+    }
     return;
   }
   throw new Error("sharing is not configured");
@@ -76,7 +103,7 @@ export async function getShared<T = unknown>(id: string): Promise<T | null> {
   if (!raw && canReadOnChain()) raw = await readOnChain(id);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as T;
+    return JSON.parse(unpack(raw)) as T;
   } catch {
     return null;
   }

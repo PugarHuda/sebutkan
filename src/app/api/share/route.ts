@@ -7,6 +7,29 @@ export const runtime = "nodejs";
 
 type SharedPayload = { result: ResearchResult; savedAt: number; queryId: string };
 
+const cap = (s: string | undefined, n: number) => (s && s.length > n ? `${s.slice(0, n)}…` : s);
+
+/**
+ * Build a bounded, shareable copy of a result. Caps long text and trims arrays so
+ * the stored blob stays small (cheap on-chain, fast over KV) while keeping
+ * everything the public /r page renders.
+ */
+function slimForShare(r: ResearchResult): ResearchResult {
+  return {
+    ...r,
+    synthesis: cap(r.synthesis, 2400) ?? "",
+    summary: cap(r.summary, 400),
+    verification: cap(r.verification, 700),
+    works: [],
+    webCitations: (r.webCitations ?? []).slice(0, 4).map((c) => ({ title: cap(c.title, 120), url: c.url })),
+    payouts: (r.payouts ?? []).slice(0, 8).map((p) => ({
+      ...p,
+      workTitle: cap(p.workTitle, 140) ?? "",
+    })),
+    agentTrace: (r.agentTrace ?? []).map((s) => ({ ...s, detail: cap(s.detail, 160) ?? "" })),
+  };
+}
+
 /**
  * POST /api/share { result }  → persist a finished result, return its permalink id.
  * The id derives from the on-chain queryId, so the share link and the attestation
@@ -30,10 +53,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "result.query required" }, { status: 400 });
   }
   const id = shareIdForQuery(result.query);
-  // Trim the heavy `works` (abstracts) — the public page doesn't render them, and
-  // it keeps the on-chain JSON small/cheap. payouts keep the per-paper title+url.
-  const slim: ResearchResult = { ...result, works: [] };
-  const payload: SharedPayload = { result: slim, savedAt: Date.now(), queryId: queryIdOf(result.query) };
+  const payload: SharedPayload = { result: slimForShare(result), savedAt: Date.now(), queryId: queryIdOf(result.query) };
   try {
     await putShared(id, payload);
     return NextResponse.json({ id, path: `/r/${id}` });
