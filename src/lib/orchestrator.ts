@@ -23,6 +23,7 @@
 import type { Work } from "./corpus";
 import { veniceChat, veniceEmbed } from "./venice";
 import { AGENT_MESH, narrowedFor, type AgentRole } from "./agents";
+import { recall, remember } from "./memory";
 
 /** Cosine similarity of two equal-length vectors (0 if degenerate). Pure + testable. */
 export function cosineSim(a: number[], b: number[]): number {
@@ -231,6 +232,22 @@ export async function orchestrate(
     expiryHours: Math.max(0, Math.round((rootExpiry - now) / 3600)),
   });
   for (const hop of buildRedelegations(rootBudget, rootExpiry, now)) trace.push(hop);
+
+  // ── Memory: recall related prior research before planning (agent isn't amnesiac) ──
+  try {
+    const related = await recall(query, 3);
+    if (related.length) {
+      trace.push({
+        agent: "researcher",
+        label: byId("researcher").label,
+        action: "recall memory",
+        status: "ok",
+        detail: `Recalled ${related.length} related prior run(s): ${related.map((m) => `“${m.query.slice(0, 45)}”`).join("; ")}`,
+      });
+    }
+  } catch {
+    /* memory is best-effort */
+  }
 
   // Compact corpus the Readers ground their answers in (shared across the fan-out).
   const corpus = works
@@ -447,6 +464,15 @@ export async function orchestrate(
       detail: summary ? `TL;DR ready (${summary.length} chars).` : "Summary unavailable.",
       budgetUSDC: narrowedFor(byId("summarizer"), rootBudget, rootExpiry, now).budgetUSDC,
     });
+  }
+
+  // ── Remember this run so future related questions can recall it (best-effort) ──
+  if (synthesis) {
+    try {
+      await remember(query, summary || synthesis.slice(0, 200));
+    } catch {
+      /* best-effort */
+    }
   }
 
   const reputation = scoreAgents({

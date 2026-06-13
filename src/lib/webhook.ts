@@ -77,7 +77,8 @@ export async function verifyRelayerWebhook(body: Record<string, unknown>): Promi
   return false;
 }
 
-// ── In-memory latest-status store (survives within a server instance) ──────────
+// ── Status store: Vercel KV / Upstash when configured (robust across serverless
+//    instances), else in-memory (survives within a warm instance). ─────────────
 type StatusEvent = { taskId: string; status: string; txHash?: string; at: number };
 const globalKey = "__SEBUTKAN_RELAYER_STATUS__";
 function store(): Map<string, StatusEvent> {
@@ -85,9 +86,41 @@ function store(): Map<string, StatusEvent> {
   if (!g[globalKey]) g[globalKey] = new Map();
   return g[globalKey];
 }
-export function recordStatus(e: StatusEvent) {
-  store().set(e.taskId, e);
+
+const KV_URL = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
+const KV_TOKEN = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
+const kvOn = () => Boolean(KV_URL && KV_TOKEN);
+async function kv(args: (string | number)[]): Promise<unknown> {
+  const res = await fetch(KV_URL!, {
+    method: "POST",
+    headers: { authorization: `Bearer ${KV_TOKEN}`, "content-type": "application/json" },
+    body: JSON.stringify(args),
+    cache: "no-store",
+  });
+  return ((await res.json()) as { result?: unknown }).result;
 }
-export function getStoredStatus(taskId: string): StatusEvent | undefined {
+
+/** Record the webhook-reported status (KV + in-memory). 1-day TTL on KV. */
+export async function recordStatus(e: StatusEvent): Promise<void> {
+  store().set(e.taskId, e);
+  if (kvOn()) {
+    try {
+      await kv(["SET", `relayer-status:${e.taskId}`, JSON.stringify(e), "EX", 86_400]);
+    } catch {
+      /* best-effort */
+    }
+  }
+}
+
+/** Read the latest verified status for a task (KV first, then in-memory). */
+export async function getStoredStatus(taskId: string): Promise<StatusEvent | undefined> {
+  if (kvOn()) {
+    try {
+      const raw = (await kv(["GET", `relayer-status:${taskId}`])) as string | null;
+      if (raw) return JSON.parse(raw) as StatusEvent;
+    } catch {
+      /* fall through to memory */
+    }
+  }
   return store().get(taskId);
 }

@@ -163,6 +163,15 @@ export default function ResearchPage() {
     return () => clearInterval(id);
   }, [research.status]);
 
+  // Venice multimodal in the main flow: auto-generate the receipt (image + TTS)
+  // as soon as a research run finishes — no extra click.
+  useEffect(() => {
+    if (research.status === "done" && receipt.status === "idle") {
+      handleReceipt();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [research.status]);
+
   async function handleRedeem() {
     if (research.status !== "done" || chainId === undefined) return;
     if (redeem.status === "redeeming") return; // guard against double-trigger

@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
   const taskId = (body.taskId ?? body.TaskId) as string | undefined;
   if (taskId) {
-    recordStatus({
+    await recordStatus({
       taskId,
       status: String(body.status ?? "unknown"),
       txHash: body.txHash as string | undefined,
@@ -36,6 +36,6 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const taskId = new URL(req.url).searchParams.get("taskId");
   if (!taskId) return NextResponse.json({ error: "taskId required" }, { status: 400 });
-  const status = getStoredStatus(taskId);
+  const status = await getStoredStatus(taskId);
   return NextResponse.json(status ?? { taskId, status: "pending" });
 }
