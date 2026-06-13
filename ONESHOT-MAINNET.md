@@ -10,7 +10,14 @@ mainnet — 1Shot's `.com` relayer also serves cheap **L2 mainnets** (verified l
 Optimism 10, Arbitrum 42161). On **Base** the whole relay costs **~$0.01–0.10 in USDC** and
 **zero native ETH** (gas is paid as a USDC transfer to the relayer's `feeCollector` inside the bundle).
 
-`scripts/relay-mainnet-1shot.mjs` performs the exact qualifying flow:
+> **Two birds, one run:** `scripts/test-redelegation-1shot.mjs` (default Base mainnet) does a real
+> **two-hop redelegation** (User → Researcher → relayer, authority only narrows) *and* relays it via
+> 1Shot with EIP-7702 — so a single ~$0.02 run is on-chain proof for **both** the "Best A2A coordination"
+> and "Best 1Shot Relayer" tracks. Needs two throwaway keys; only the USER key holds a little USDC.
+> Run: `USER_PRIVATE_KEY=0x... RESEARCHER_PRIVATE_KEY=0x... node scripts/test-redelegation-1shot.mjs`
+> (verified live to the funds guard: chain Base, relayer `.com`, both hops signed, 7702 for both signers).
+
+`scripts/relay-mainnet-1shot.mjs` performs the simpler single-hop qualifying flow:
 EOA → **EIP-7702 authorization** (upgrade to MetaMask Stateless7702 smart account) →
 **ERC-7710 delegation** (delegate = relayer `targetAddress`) → `relayer_send7710Transaction` on
 **Base mainnet** → poll to `Confirmed` → real mainnet txHash.
