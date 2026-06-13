@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { ResearchResult } from "@/lib/agent";
+import { ReceiptCard } from "./ReceiptCard";
+import { CopyCitationsButton } from "./CopyCitationsButton";
 
 /** Render text with clickable [n] / ^n^ citations linking to the n-th cited paper. */
 export function CitedText({ text, works }: { text: string; works: { url: string; title: string }[] }) {
@@ -229,6 +231,17 @@ export function ResultView({ result }: { result: ResearchResult }) {
         </table>
         {result.payouts.length === 0 ? <p className="mt-4 text-xs text-neutral-400">No authors to pay for this query.</p> : null}
       </div>
+
+      {/* On-brand citation receipt (reproducible from saved data) + export */}
+      {result.payouts.length > 0 ? (
+        <div className="space-y-3 border-t border-[var(--rule)] pt-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-xs font-medium text-neutral-500">Citation receipt</h3>
+            <CopyCitationsButton result={result} />
+          </div>
+          <ReceiptCard result={result} />
+        </div>
+      ) : null}
     </div>
   );
 }

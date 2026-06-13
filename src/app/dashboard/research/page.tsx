@@ -10,6 +10,7 @@ import { AGENT_MESH, narrowedFor } from "@/lib/agents";
 import { redeemViaOneShot } from "@/lib/redeem";
 import { loadHistory, saveToHistory, removeFromHistory, clearHistory, type HistoryEntry } from "@/lib/history";
 import { pickFlaskConnector } from "@/lib/wagmi";
+import { ReceiptCard } from "@/components/ReceiptCard";
 import { createWalletClient, custom, type WalletClient } from "viem";
 
 type ResearchState =
@@ -202,7 +203,7 @@ export default function ResearchPage() {
         walletClient: wc,
         chainId,
         payouts: research.result.payouts,
-        workUSDC: 0.5,
+        workUSDC: research.result.recommendedSettleUSDC ?? 0.5,
       });
       setRedeem({ status: "done", result });
     } catch (e) {
@@ -222,7 +223,9 @@ export default function ResearchPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           query: research.result.query,
-          amountUSDC6: "500000",
+          // Settle the agent-recommended amount the UI shows (scaled by the
+          // fact-checker's confidence), not a fixed number.
+          amountUSDC6: String(Math.round((research.result.recommendedSettleUSDC ?? 0.5) * 1e6)),
           payouts: research.result.payouts,
           ledger,
         }),
@@ -888,57 +891,40 @@ export default function ResearchPage() {
                 <p className="mt-2 text-[11px] text-amber-600">Reputation update skipped: {feedback.message}</p>
               ) : null}
 
-              {receipt.status === "done" ? (
-                <div className="mt-4 space-y-3">
-                  {receipt.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
+              {/* Canonical on-brand receipt — always shown, consistent design,
+                  reproducible from the saved run. Venice image/audio are extras. */}
+              <div className="mt-4 space-y-3">
+                <ReceiptCard result={research.result} />
+                {receipt.status === "generating" ? (
+                  <p className="text-[11px] text-[var(--muted)]">Generating Venice multimodal extras…</p>
+                ) : null}
+                {receipt.status === "done" && receipt.image ? (
+                  <div>
+                    <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--muted)]">
+                      🎨 Venice-generated art (z-image-turbo)
+                    </p>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={receipt.image.startsWith("data:") ? receipt.image : `data:image/webp;base64,${receipt.image}`}
-                      alt="Citation receipt"
+                      alt="Venice citation receipt art"
                       className="w-full max-w-sm rounded-lg border border-neutral-200 dark:border-neutral-800"
                     />
-                  ) : (
-                    // Designed fallback receipt (English) when Venice image is unavailable —
-                    // a real, presentable card, not just an error line.
-                    <div className="w-full max-w-sm overflow-hidden rounded-lg border border-emerald-300 bg-[var(--paper)] dark:border-emerald-900">
-                      <div className="border-b border-emerald-200 px-5 py-3 dark:border-emerald-900">
-                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Sebutkan</p>
-                        <h4 className="serif text-xl font-semibold text-[var(--accent)]">Citations Paid</h4>
-                      </div>
-                      <div className="space-y-2 px-5 py-4 text-xs">
-                        <p className="line-clamp-2 italic text-[var(--ink)]/80">“{research.result.query}”</p>
-                        <div className="flex items-center justify-between border-t border-[var(--rule)] pt-2">
-                          <span className="text-[var(--muted)]">Authors cited</span>
-                          <span className="font-mono font-semibold">{research.result.payouts.length}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[var(--muted)]">Settled</span>
-                          <span className="font-mono font-semibold text-emerald-600">
-                            {typeof research.result.recommendedSettleUSDC === "number"
-                              ? research.result.recommendedSettleUSDC.toFixed(2)
-                              : "0.50"}{" "}
-                            USDC
-                          </span>
-                        </div>
-                        <p className="pt-1 text-[10px] text-[var(--muted)]">Every citation paid its source.</p>
-                      </div>
-                    </div>
-                  )}
-                  {receipt.audioBase64 ? (
-                    <div>
-                      <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--muted)]">
-                        🔊 Spoken briefing (Venice TTS · matches the answer’s language)
-                      </p>
-                      <audio controls src={`data:audio/mp3;base64,${receipt.audioBase64}`} className="w-full max-w-sm" />
-                    </div>
-                  ) : null}
-                  {receipt.degraded && !receipt.audioBase64 ? (
-                    <p className="text-[11px] text-amber-600">
-                      Venice multimodal unavailable (no credit) — showing the local receipt card above.
+                  </div>
+                ) : null}
+                {receipt.status === "done" && receipt.audioBase64 ? (
+                  <div>
+                    <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--muted)]">
+                      🔊 Spoken briefing (Venice TTS · matches the answer’s language)
                     </p>
-                  ) : null}
-                </div>
-              ) : null}
+                    <audio controls src={`data:audio/mp3;base64,${receipt.audioBase64}`} className="w-full max-w-sm" />
+                  </div>
+                ) : null}
+                {receipt.status === "done" && receipt.degraded && !receipt.audioBase64 && !receipt.image ? (
+                  <p className="text-[11px] text-[var(--muted)]">
+                    Venice multimodal extras unavailable (no credit) — the receipt above is always available.
+                  </p>
+                ) : null}
+              </div>
               {receipt.status === "error" ? <ErrorBox>{receipt.message}</ErrorBox> : null}
 
               {redeem.status === "done" ? (

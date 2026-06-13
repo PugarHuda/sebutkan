@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LandingStats } from "@/components/LandingStats";
 
 export default function Home() {
   return (
@@ -19,8 +20,10 @@ export default function Home() {
           The research agent that cites{" "}
           <span className="serif italic text-[var(--accent)]">and pays</span> its sources. Grant one
           scoped budget — it buys papers, reads them with Venice, and splits USDC back to every
-          author it cites. Gasless. Non-custodial.
+          author it cites. Author payouts are gasless (relayed by 1Shot). Non-custodial.
         </p>
+
+        <LandingStats />
 
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link
