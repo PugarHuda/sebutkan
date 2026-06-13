@@ -381,6 +381,11 @@ export default function ResearchPage() {
         <p className="mt-1 text-xs text-neutral-500">
           One signature creates an ERC-7710 delegation. The agent can never spend beyond this.
         </p>
+        <p className="mt-2 rounded-md bg-[var(--accent-soft)] px-3 py-2 text-[11px] text-[var(--ink)]/75">
+          💡 A bigger budget buys <b>deeper research</b>: it scales the agent fan-out
+          ({perDay >= 16 ? 5 : perDay >= 8 ? 3 : 2} parallel Readers at {perDay} USDC) and pays cited
+          authors a larger share — so more budget = more thorough answers + more generous payouts.
+        </p>
         <div className="mt-4 flex flex-wrap items-end gap-4">
           <Field label="USDC / day">
             <input

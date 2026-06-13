@@ -5,6 +5,9 @@ import { useAccount, useConnect, useSignMessage, useWriteContract } from "wagmi"
 import { pickFlaskConnector } from "@/lib/wagmi";
 import { keccak256, encodePacked, getAddress } from "viem";
 import { ESCROW_ABI } from "@/lib/escrow";
+import { CITATION_YIELD, YIELD_ABI, identityId } from "@/lib/yield";
+
+type Bonus = { pendingUSDC6: string; apyBps: number; sinceUnix: number; claimed: boolean } | null;
 
 type Status = {
   enabled: boolean;
@@ -28,6 +31,8 @@ export default function ClaimPage() {
   const [status, setStatus] = useState<Status | null>(null);
   const [claim, setClaim] = useState<ClaimState>({ status: "idle" });
   const [owed, setOwed] = useState<bigint>(0n);
+  const [bonus, setBonus] = useState<Bonus>(null);
+  const [bonusTx, setBonusTx] = useState<string | null>(null);
   const [withdrawTx, setWithdrawTx] = useState<string | null>(null);
   const { writeContractAsync } = useWriteContract();
 
@@ -49,7 +54,29 @@ export default function ClaimPage() {
     } catch {
       setOwed(0n);
     }
+    try {
+      const b = await fetch(`/api/bonus?identity=${encodeURIComponent(verifiedOrcid)}`).then((x) => x.json());
+      setBonus(b?.configured ? { pendingUSDC6: b.pendingUSDC6, apyBps: b.apyBps, sinceUnix: b.sinceUnix, claimed: b.claimed } : null);
+    } catch {
+      setBonus(null);
+    }
   }, [verifiedOrcid]);
+
+  async function handleClaimBonus() {
+    if (!verifiedOrcid || !CITATION_YIELD) return;
+    try {
+      const tx = await writeContractAsync({
+        address: CITATION_YIELD,
+        abi: YIELD_ABI,
+        functionName: "claimBonus",
+        args: [identityId(verifiedOrcid)],
+      });
+      setBonusTx(tx);
+      setTimeout(refreshOwed, 4000);
+    } catch (e) {
+      setBonusTx(`error: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
 
   useEffect(() => {
     refreshOwed();
@@ -103,6 +130,7 @@ export default function ClaimPage() {
 
       <div className="card mt-8 space-y-5 p-6">
         {/* 1. connect wallet */}
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">1 · Connect wallet</p>
         {!isConnected ? (
           <div className="flex flex-wrap gap-2">
             {(() => {
@@ -132,6 +160,7 @@ export default function ClaimPage() {
 
         {/* 2. verify ORCID */}
         <div>
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">2 · Verify your ORCID</p>
           <label className="block text-xs">
             <span className="mb-1 block text-neutral-500">Your ORCID iD</span>
             <input
@@ -170,6 +199,7 @@ export default function ClaimPage() {
         </div>
 
         {/* 3. sign + bind */}
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">3 · Bind wallet (one signature)</p>
         <button
           onClick={handleBind}
           disabled={!isConnected || !verifiedOrcid || claim.status === "signing" || claim.status === "binding"}
@@ -194,36 +224,76 @@ export default function ClaimPage() {
           <p className="rounded-md bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40">{claim.message}</p>
         ) : null}
 
-        {/* Accrued rewards (UnclaimedEscrow) */}
+        {/* Your rewards (UnclaimedEscrow principal + CitationYield bonus) */}
         {verifiedOrcid ? (
-          <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium">Rewards waiting for you</span>
-              <span className="font-mono text-sm font-semibold text-emerald-600">
-                {(Number(owed) / 1e6).toFixed(2)} USDC
-              </span>
-            </div>
-            <p className="mt-1 text-[11px] text-neutral-500">
-              Held on-chain in UnclaimedEscrow for your ORCID until you claim. Bind your wallet above,
-              then withdraw.
-            </p>
-            <button
-              onClick={handleWithdraw}
-              disabled={owed === 0n || !isConnected}
-              className="mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white disabled:opacity-40"
-            >
-              Withdraw {(Number(owed) / 1e6).toFixed(2)} USDC
-            </button>
-            {withdrawTx && !withdrawTx.startsWith("error") ? (
-              <p className="mt-2 text-[11px] text-emerald-700">
-                ✓{" "}
-                <a href={`https://sepolia.etherscan.io/tx/${withdrawTx}`} target="_blank" rel="noreferrer" className="underline">
-                  withdrawal tx
-                </a>
+          <div className="mt-2 space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+            <h3 className="serif text-sm font-semibold">Your rewards</h3>
+
+            {/* Principal — accumulates as you're cited more */}
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium">Cited &amp; owed (accumulating)</span>
+                <span className="font-mono text-sm font-semibold text-emerald-600">
+                  {(Number(owed) / 1e6).toFixed(2)} USDC
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-neutral-500">
+                Held on-chain in UnclaimedEscrow. This <b>grows automatically</b> every time Sebutkan
+                cites your work again — even before you claim. Nothing expires.
               </p>
-            ) : null}
-            {withdrawTx?.startsWith("error") ? (
-              <p className="mt-2 text-[11px] text-red-600">{withdrawTx}</p>
+              <button
+                onClick={handleWithdraw}
+                disabled={owed === 0n || !isConnected}
+                className="mt-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white disabled:opacity-40"
+              >
+                Withdraw {(Number(owed) / 1e6).toFixed(2)} USDC
+              </button>
+              {withdrawTx && !withdrawTx.startsWith("error") ? (
+                <p className="mt-2 text-[11px] text-emerald-700">
+                  ✓{" "}
+                  <a href={`https://sepolia.etherscan.io/tx/${withdrawTx}`} target="_blank" rel="noreferrer" className="underline">
+                    withdrawal tx
+                  </a>
+                </p>
+              ) : null}
+              {withdrawTx?.startsWith("error") ? <p className="mt-2 text-[11px] text-red-600">{withdrawTx}</p> : null}
+            </div>
+
+            {/* Citation-loyalty yield (CitationYield) */}
+            {bonus ? (
+              <div className="rounded-md border border-[var(--rule)] bg-[var(--paper)] p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium">
+                    ⏳ Citation-loyalty yield{" "}
+                    <span className="rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] text-[var(--accent)]">
+                      {(bonus.apyBps / 100).toFixed(0)}% APR
+                    </span>
+                  </span>
+                  <span className="font-mono text-sm font-semibold text-[var(--accent)]">
+                    +{(Number(bonus.pendingUSDC6) / 1e6).toFixed(4)} USDC
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-neutral-500">
+                  A protocol-funded bonus that accrues the longer your rewards stay unclaimed — passive
+                  earning while you wait. {bonus.claimed ? "Already claimed." : "Claim it any time."}
+                </p>
+                <button
+                  onClick={handleClaimBonus}
+                  disabled={bonus.claimed || Number(bonus.pendingUSDC6) === 0 || !isConnected}
+                  className="mt-2 rounded-lg border border-[var(--accent)] px-4 py-2 text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent-soft)] disabled:opacity-40"
+                >
+                  Claim bonus
+                </button>
+                {bonusTx && !bonusTx.startsWith("error") ? (
+                  <p className="mt-2 text-[11px] text-emerald-700">
+                    ✓{" "}
+                    <a href={`https://sepolia.etherscan.io/tx/${bonusTx}`} target="_blank" rel="noreferrer" className="underline">
+                      bonus tx
+                    </a>
+                  </p>
+                ) : null}
+                {bonusTx?.startsWith("error") ? <p className="mt-2 text-[11px] text-red-600">{bonusTx}</p> : null}
+              </div>
             ) : null}
           </div>
         ) : null}

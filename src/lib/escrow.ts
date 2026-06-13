@@ -15,6 +15,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { PERMISSION_CHAIN, USDC } from "./chains";
 import { authorHash } from "./registry";
+import { accrueYield } from "./yield";
 import type { CitationPayout } from "./agent";
 
 const ESCROW = process.env.NEXT_PUBLIC_UNCLAIMED_ESCROW as Address | undefined;
@@ -110,6 +111,13 @@ export async function escrowUnclaimed(args: {
     functionName: "recordMany",
     args: [hashes, amounts],
   });
+
+  // 3) mirror into CitationYield so the citation-loyalty bonus accrues (best-effort).
+  try {
+    await accrueYield(unclaimed.map((p) => p.identity), amounts);
+  } catch {
+    /* yield is a bonus layer — never block escrow */
+  }
 
   return { fundTx, recordTx, total: sum.toString() };
 }
