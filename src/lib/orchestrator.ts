@@ -319,7 +319,8 @@ export async function orchestrate(
   if (revised) {
     rounds = 2;
     const revRes = await safeChat({
-      webSearch: true,
+      // No web search here — the fact-checker already did the grounding; revising
+      // from its feedback keeps the worst-case latency inside the function budget.
       messages: [
         {
           role: "system",

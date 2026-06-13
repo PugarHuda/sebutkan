@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { runResearch } from "@/lib/agent";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Multi-agent orchestration can chain several Venice calls; give it headroom
+// (Vercel caps to the plan's max, so this is safe even where it can't be honored).
+export const maxDuration = 120;
 
 /**
  * POST /api/research  { query: string, papers?: number }
