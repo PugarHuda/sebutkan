@@ -27,13 +27,15 @@ const STOPWORDS = new Set(
   ),
 );
 
-/** Extract significant keywords from a query. Pure + testable. */
+/** Extract significant keywords from a query. Pure + testable.
+ *  Hyphens split into separate tokens ("solid-state" → "solid","state") so
+ *  hyphenated and non-hyphenated phrasings of the same topic still match. */
 export function keywordsOf(query: string): string[] {
   return [
     ...new Set(
       query
         .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, " ")
+        .replace(/[^a-z0-9\s]/g, " ")
         .split(/\s+/)
         .filter((w) => w.length > 2 && !STOPWORDS.has(w)),
     ),
