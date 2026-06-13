@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseVenice402, buildEip3009TypedData, encodeVenicePaymentHeader } from "../venice-x402";
+import { parseVenice402, buildEip3009TypedData, encodeVenicePaymentHeader, payVeniceX402 } from "../venice-x402";
 
 // Venice's real 402 shape (captured 2026-06-13).
 const body402 = {
@@ -49,5 +49,48 @@ describe("encodeVenicePaymentHeader", () => {
     expect(decoded.x402Version).toBe(2);
     expect(decoded.scheme).toBe("exact");
     expect(decoded.payload.signature).toBe("0xsig");
+  });
+});
+
+describe("payVeniceX402 (full handshake, mocked)", () => {
+  it("on 402 it signs, retries with X-PAYMENT, and returns the answer", async () => {
+    const calls: { hasPayment: boolean }[] = [];
+    const fetchImpl = (async (_url: string, init: RequestInit) => {
+      const hasPayment = Boolean(new Headers(init.headers).get("X-PAYMENT"));
+      calls.push({ hasPayment });
+      if (!hasPayment) return { status: 402, json: async () => body402 } as unknown as Response;
+      return { status: 200, ok: true, json: async () => ({ choices: [{ message: { content: "hi" } }] }) } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    let signedTyped: unknown = null;
+    const r = await payVeniceX402({
+      body: { model: "venice-uncensored", messages: [{ role: "user", content: "x" }] },
+      account: "0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E",
+      signTypedData: async (td) => { signedTyped = td; return "0xdeadbeef"; },
+      nonce: ("0x" + "11".repeat(32)) as `0x${string}`,
+      validBeforeSec: 9999999999,
+      fetchImpl,
+    });
+
+    expect(calls.length).toBe(2); // first 402, then paid retry
+    expect(calls[1].hasPayment).toBe(true); // retried WITH the X-PAYMENT header
+    expect(signedTyped).not.toBeNull(); // EIP-3009 typed data was signed
+    expect(r.paid).toBe(true);
+    expect((r.data as { choices: { message: { content: string } }[] }).choices[0].message.content).toBe("hi");
+  });
+
+  it("returns early (no signing) when the first call is not 402", async () => {
+    let signed = false;
+    const fetchImpl = (async () => ({ status: 200, ok: true, json: async () => ({ ok: 1 }) } as unknown as Response)) as unknown as typeof fetch;
+    const r = await payVeniceX402({
+      body: {},
+      account: "0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E",
+      signTypedData: async () => { signed = true; return "0x"; },
+      nonce: "0x00" as `0x${string}`,
+      validBeforeSec: 1,
+      fetchImpl,
+    });
+    expect(signed).toBe(false);
+    expect(r.reason).toBe("not_402");
   });
 });

@@ -89,3 +89,53 @@ export function encodeVenicePaymentHeader(req: VeniceRequirement, authorization:
   };
   return Buffer.from(JSON.stringify(payload), "utf8").toString("base64");
 }
+
+export type Eip712TypedData = ReturnType<typeof buildEip3009TypedData>;
+
+/**
+ * Full x402-pay-Venice handshake: call Venice with no key → on 402, sign an
+ * EIP-3009 authorization for the quoted USDC → retry with the X-PAYMENT header →
+ * return Venice's response. `signTypedData`, `fetchImpl`, `nonce`, and
+ * `validBeforeSec` are injected so this is deterministic and unit-testable.
+ * Settling actually costs the quoted amount (≈10 USDC on Base).
+ */
+export async function payVeniceX402(opts: {
+  body: object;
+  account: Address;
+  signTypedData: (td: Eip712TypedData) => Promise<`0x${string}`>;
+  nonce: `0x${string}`;
+  validBeforeSec: number;
+  base?: string;
+  fetchImpl?: typeof fetch;
+}): Promise<{ paid: boolean; status: number; data?: unknown; requirement?: VeniceRequirement; reason?: string }> {
+  const f = opts.fetchImpl ?? fetch;
+  const base = opts.base ?? "https://api.venice.ai/api/v1";
+  const url = `${base}/chat/completions`;
+
+  const first = await f(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(opts.body) });
+  if (first.status !== 402) {
+    return { paid: false, status: first.status, data: await first.json().catch(() => null), reason: "not_402" };
+  }
+
+  const req = parseVenice402(await first.json());
+  if (!req) return { paid: false, status: 402, reason: "no_evm_requirement" };
+
+  const typed = buildEip3009TypedData(req, opts.account, opts.nonce, opts.validBeforeSec);
+  const signature = await opts.signTypedData(typed);
+  const authorization = {
+    from: opts.account,
+    to: req.payTo,
+    value: req.amount,
+    validAfter: "0",
+    validBefore: String(opts.validBeforeSec),
+    nonce: opts.nonce,
+  };
+  const header = encodeVenicePaymentHeader(req, authorization, signature);
+
+  const paidRes = await f(url, {
+    method: "POST",
+    headers: { "content-type": "application/json", "X-PAYMENT": header },
+    body: JSON.stringify(opts.body),
+  });
+  return { paid: paidRes.ok, status: paidRes.status, data: await paidRes.json().catch(() => null), requirement: req };
+}
