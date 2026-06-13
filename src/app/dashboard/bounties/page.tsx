@@ -19,9 +19,20 @@ type Bounty = {
 };
 
 export default function BountiesPage() {
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
+  // A wallet that granted the agent budget is upgraded to a 7702 smart account
+  // (code prefixed 0xef0100). MetaMask routes such accounts differently and
+  // rejects plain contract calls (approve/create) — warn before they try.
+  const [delegated, setDelegated] = useState(false);
+  useEffect(() => {
+    if (!address || !publicClient) return setDelegated(false);
+    publicClient
+      .getCode({ address })
+      .then((code) => setDelegated(Boolean(code && code.toLowerCase().startsWith("0xef0100"))))
+      .catch(() => setDelegated(false));
+  }, [address, publicClient]);
   const [topic, setTopic] = useState("");
   const [amount, setAmount] = useState(1);
   const [bounties, setBounties] = useState<Bounty[]>([]);
@@ -131,6 +142,13 @@ export default function BountiesPage() {
         </div>
         {!isConnected ? (
           <p className="mt-2 text-[11px] text-[var(--muted)]">Connect MetaMask (sidebar) to sponsor.</p>
+        ) : null}
+        {isConnected && delegated ? (
+          <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+            ⚠️ This wallet is a <b>delegated smart account</b> (it granted the agent budget), so MetaMask
+            may reject a direct bounty payment. To sponsor, switch to a MetaMask account that hasn&apos;t
+            granted a budget, then come back here.
+          </p>
         ) : null}
         {status ? <p className="mt-2 text-[11px] text-[var(--accent)]">{status}</p> : null}
       </div>
