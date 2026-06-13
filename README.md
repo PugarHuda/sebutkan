@@ -37,8 +37,8 @@ permalink** (`/r/<id>`) — stored on-chain in ShareRegistry by default (zero-in
 - **Real author attribution** — `/claim`: an author signs `keccak256(authorId, wallet)`; the operator binds it on-chain in NameRegistry. Payouts route to the real claimed wallet (unclaimed → labeled demo).
 - **Real x402** — the agent pays a USDC micropayment to unlock the top paper; the resource verifies the payment **on-chain** (not a header stub).
 - **Real 1Shot** — live `getCapabilities`/`getFeeData`; gasless redeem builds a signed delegation to the relayer `targetAddress`; **Ed25519 webhook** receiver verifies status against the JWKS.
-- **Real multi-agent coordination** — per-paper Reader fan-out, a Fact-checker that forces a Researcher revision on low confidence, and an on-chain ERC-8004 reputation feedback loop (verified: live `bumpReputation` txs).
-- **50 tests** — 28 Foundry + 22 Vitest, all green.
+- **Real multi-agent coordination** — a Planner decomposes the query into a budget-scaled Reader fan-out, a **Citation-Matcher** (Venice embeddings) drives **relevance-weighted payouts**, a Fact-checker forces a Researcher revision on low confidence, and an on-chain ERC-8004 reputation feedback loop rewards contributors (verified: live `bumpReputation` txs). A **literal two-hop redelegation** (User→Researcher→relayer) can be redeemed on a mainnet via 1Shot (`scripts/test-redelegation-1shot.mjs`).
+- **73 tests** — 32 Foundry + 41 Vitest, all green.
 
 ---
 
