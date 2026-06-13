@@ -199,15 +199,19 @@ export default function BountiesPage() {
                 <span className="serif font-semibold text-[var(--accent)]">
                   {(Number(b.amount) / 1e6).toFixed(2)} USDC
                 </span>
-                <span
-                  className={`rounded px-2 py-0.5 text-[10px] ${
-                    b.settled
-                      ? "bg-[var(--accent-soft)] text-[var(--accent)]"
-                      : "bg-[var(--paper)] text-[var(--muted)]"
-                  }`}
-                >
-                  {b.settled ? "settled" : "open"}
-                </span>
+                {b.settled ? (
+                  <span className="rounded bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] text-[var(--accent)]">settled</span>
+                ) : b.topic ? (
+                  <Link
+                    href={`/dashboard/research?q=${encodeURIComponent(b.topic)}`}
+                    title="Open this topic in Research"
+                    className="rounded bg-emerald-600 px-2.5 py-1 text-[10px] font-medium text-white hover:bg-emerald-500"
+                  >
+                    Open →
+                  </Link>
+                ) : (
+                  <span className="rounded bg-[var(--paper)] px-2 py-0.5 text-[10px] text-[var(--muted)]">open</span>
+                )}
               </div>
             </div>
           ))

@@ -20,7 +20,17 @@ function slimForShare(r: ResearchResult): ResearchResult {
     synthesis: cap(r.synthesis, 1800) ?? "",
     summary: cap(r.summary, 320),
     verification: cap(r.verification, 500),
-    works: [],
+    // Keep a trimmed works list (title + url, no abstract/authors) so the
+    // synthesis [n] citations stay clickable on the public page. Small blob.
+    works: (r.works ?? []).slice(0, 8).map((w) => ({
+      id: w.id,
+      title: cap(w.title, 140) ?? "",
+      url: w.url,
+      abstract: "",
+      authors: [],
+      rank: w.rank,
+      year: w.year,
+    })),
     webCitations: (r.webCitations ?? []).slice(0, 3).map((c) => ({ title: cap(c.title, 100), url: c.url })),
     // Keep only what the public /r page renders (name, title, url, share) — drop
     // the wallet/identity/claimed fields to keep the stored blob small.

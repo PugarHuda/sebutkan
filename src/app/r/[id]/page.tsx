@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getShared, isShareConfigured } from "@/lib/store";
+import { ResultView } from "@/components/ResultView";
 import type { ResearchResult } from "@/lib/agent";
 
 export const runtime = "nodejs";
@@ -48,22 +49,10 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
   }
 
   const { result, savedAt, queryId } = data;
-  const trace = result.agentTrace ?? [];
 
   return (
     <Shell>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] uppercase tracking-[0.15em] text-[var(--accent)]">Shared research</p>
-        <span
-          className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium ${
-            result.venice === "live"
-              ? "bg-emerald-100 text-emerald-700"
-              : "bg-amber-100 text-amber-700"
-          }`}
-        >
-          {result.venice === "live" ? "● Venice live" : "● Venice fallback"}
-        </span>
-      </div>
+      <p className="text-[11px] uppercase tracking-[0.15em] text-[var(--accent)]">Shared research</p>
       <h1 className="serif mt-1 text-3xl font-semibold tracking-tight">{result.query}</h1>
       <p className="mt-1 text-[11px] text-[var(--muted)]">
         Saved {new Date(savedAt).toUTCString()} ·{" "}
@@ -74,82 +63,9 @@ export default async function SharedResultPage({ params }: { params: Promise<{ i
         </Link>
       </p>
 
-      {result.summary ? (
-        <div className="mt-6 rounded-md bg-[var(--paper-2)] p-4">
-          <h2 className="text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">TL;DR</h2>
-          <p className="mt-1 text-sm font-medium leading-relaxed">{result.summary}</p>
-        </div>
-      ) : null}
-
-      <article className="mt-6 whitespace-pre-wrap rounded-md bg-[var(--paper-2)] p-4 text-sm leading-relaxed text-[var(--ink)]/90">
-        {result.synthesis}
-      </article>
-
-      {result.verification ? (
-        <div className="mt-5 rounded-md border-l-2 border-[var(--accent)] bg-[var(--accent-soft)] p-4">
-          <h3 className="serif text-sm font-semibold text-[var(--accent)]">❝ Fact-checker agent</h3>
-          <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-[var(--ink)]/80">{result.verification}</p>
-        </div>
-      ) : null}
-
-      {trace.length ? (
-        <div className="mt-6 rounded-md border border-[var(--rule)] p-4">
-          <h3 className="serif text-sm font-semibold">Multi-agent trace</h3>
-          <ol className="mt-3 space-y-1.5">
-            {trace.map((s, i) => (
-              <li key={i} className="flex items-start gap-2.5 text-[11px]" style={{ marginLeft: s.redelegation ? "16px" : "0" }}>
-                <span
-                  className={`mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
-                    s.status === "rejected"
-                      ? "bg-red-500"
-                      : s.status === "revised"
-                        ? "bg-indigo-500"
-                        : s.status === "skipped"
-                          ? "bg-neutral-300"
-                          : "bg-emerald-500"
-                  }`}
-                />
-                <div>
-                  <span className="font-medium">{s.label}</span> <span className="text-[var(--muted)]">· {s.action}</span>
-                  {s.redelegation ? <span className="ml-1 text-[var(--accent)]">↳ redelegated</span> : null}
-                  {typeof s.budgetUSDC === "number" ? (
-                    <span className="ml-1 font-mono text-[10px] text-emerald-600">≤ {s.budgetUSDC.toFixed(2)} USDC</span>
-                  ) : null}
-                  <p className="text-[var(--ink)]/70">{s.detail}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-      ) : null}
-
-      {result.payouts?.length ? (
-        <div className="mt-6">
-          <h3 className="text-xs font-medium text-[var(--muted)]">Author payout plan — every citation pays its author</h3>
-          <table className="mt-2 w-full text-left text-xs">
-            <thead className="text-neutral-400">
-              <tr>
-                <th className="py-1 font-normal">Author</th>
-                <th className="font-normal">Paper</th>
-                <th className="text-right font-normal">Share</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.payouts.map((p, i) => (
-                <tr key={i} className="border-t border-[var(--rule)]">
-                  <td className="py-2 pr-2 font-medium">{p.authorName}</td>
-                  <td className="max-w-[200px] truncate pr-2" title={p.workTitle}>
-                    <a href={p.url} target="_blank" rel="noreferrer" className="text-blue-600 underline decoration-dotted">
-                      {p.workTitle}
-                    </a>
-                  </td>
-                  <td className="text-right font-mono font-medium text-emerald-600">{(p.weightBps / 100).toFixed(1)}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+      <div className="mt-6">
+        <ResultView result={result} />
+      </div>
 
       <footer className="mt-10 flex items-center justify-between border-t border-[var(--rule)] pt-4 text-[11px] text-[var(--muted)]">
         <span>
