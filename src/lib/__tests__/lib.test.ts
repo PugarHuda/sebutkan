@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { weightCitations } from "../agent";
 import { queryIdOf, encodeAttestAndSplit } from "../settlement";
+import { shareIdForQuery } from "../store";
 import { authorHash, bindingMessage, demoWallet } from "../registry";
 import { encodePaymentHeader, decodePaymentHeader, require402, type PaymentPayload } from "../x402";
 import { sanitizeQuery, type Work } from "../corpus";
@@ -66,6 +67,12 @@ describe("settlement", () => {
     const id = queryIdOf("q");
     expect(id).toMatch(/^0x[0-9a-f]{64}$/);
     expect(queryIdOf("q")).toBe(id);
+  });
+  it("shareIdForQuery is deterministic and is the queryId's first 8 bytes", () => {
+    const id = shareIdForQuery("carbon capture");
+    expect(id).toBe(shareIdForQuery("carbon capture"));
+    expect(id).toMatch(/^[0-9a-f]{16}$/);
+    expect(queryIdOf("carbon capture").startsWith(`0x${id}`)).toBe(true);
   });
   it("encodes attestAndSplit calldata", () => {
     const data = encodeAttestAndSplit({

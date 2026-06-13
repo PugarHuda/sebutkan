@@ -47,6 +47,12 @@ type FeedbackState =
   | { status: "done"; results: { agent: string; txHash?: string; error?: string }[] }
   | { status: "error"; message: string };
 
+type ShareState =
+  | { status: "idle" }
+  | { status: "sharing" }
+  | { status: "done"; url: string }
+  | { status: "error"; message: string };
+
 const SESSION_ACCOUNT =
   (process.env.NEXT_PUBLIC_SESSION_ACCOUNT as `0x${string}`) ??
   "0x000000000000000000000000000000000000dEaD";
@@ -81,8 +87,32 @@ export default function ResearchPage() {
   const [redeem, setRedeem] = useState<RedeemState>({ status: "idle" });
   const [receipt, setReceipt] = useState<ReceiptState>({ status: "idle" });
   const [feedback, setFeedback] = useState<FeedbackState>({ status: "idle" });
+  const [share, setShare] = useState<ShareState>({ status: "idle" });
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [tick, setTick] = useState(0);
+
+  async function handleShare() {
+    if (research.status !== "done" || share.status === "sharing") return;
+    setShare({ status: "sharing" });
+    try {
+      const res = await fetch("/api/share", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ result: research.result }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+      const url = `${window.location.origin}${json.path}`;
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        /* clipboard may be blocked — the URL is shown regardless */
+      }
+      setShare({ status: "done", url });
+    } catch (e) {
+      setShare({ status: "error", message: e instanceof Error ? e.message : String(e) });
+    }
+  }
 
   // Load this device's saved research history once on mount.
   useEffect(() => {
@@ -96,6 +126,7 @@ export default function ResearchPage() {
     setRedeem({ status: "idle" });
     setReceipt({ status: "idle" });
     setFeedback({ status: "idle" });
+    setShare({ status: "idle" });
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -206,6 +237,7 @@ export default function ResearchPage() {
     setSettle({ status: "idle" });
     setRedeem({ status: "idle" });
     setFeedback({ status: "idle" });
+    setShare({ status: "idle" });
     try {
       const res = await fetch("/api/research", {
         method: "POST",
@@ -718,7 +750,28 @@ export default function ResearchPage() {
                     >
                       {receipt.status === "generating" ? "Generating…" : "3 · Venice receipt (image + audio)"}
                     </button>
+                    <button
+                      onClick={handleShare}
+                      disabled={share.status === "sharing"}
+                      className="rounded-lg border border-[var(--accent)] px-4 py-2.5 text-xs font-medium text-[var(--accent)] transition hover:bg-[var(--accent-soft)] disabled:opacity-40"
+                    >
+                      {share.status === "sharing" ? "Creating link…" : "4 · Share public link ↗"}
+                    </button>
                   </div>
+
+                  {share.status === "done" ? (
+                    <div className="mt-2 flex items-center gap-2 rounded-md border border-[var(--rule)] p-2 text-[11px]">
+                      <span className="text-emerald-600">✓ link copied</span>
+                      <a href={share.url} target="_blank" rel="noreferrer" className="link-accent flex-1 truncate font-mono underline">
+                        {share.url}
+                      </a>
+                    </div>
+                  ) : null}
+                  {share.status === "error" ? (
+                    <p className="mt-2 text-[11px] text-amber-600">
+                      Share unavailable: {share.message}
+                    </p>
+                  ) : null}
                   <p className="mt-2 text-[11px] text-neutral-400">
                     record a real on-chain attestation · relay USDC splits gasless via 1Shot · generate a Venice receipt card + audio briefing
                   </p>
