@@ -67,8 +67,9 @@ Show, in the main flow:
 Record the txHash here once you've run it:
 
 ```
-Base mainnet relay tx: 0x________________________________________________________________
+Base mainnet relay tx: 0x6f4c8d539f9ea34f7e6e0d0730e4ae04fec1d986e5d0641b8b36ab00c6e8480c
 ```
+✅ **DONE (13 Jun 2026)** — relayed on **Base mainnet** via `relayer.1shotapi.com`, tx **type 0x4 (EIP-7702 SetCode, 1 authorization)**, gas paid by the 1Shot relayer-sponsor (`0x7338…`), gas-fee reimbursed in USDC. Operator `0x39D2` was a plain EOA (code `0x`) and is now a 7702 smart account (code `0xef0100…63c0c19a…`). View: https://basescan.org/tx/0x6f4c8d539f9ea34f7e6e0d0730e4ae04fec1d986e5d0641b8b36ab00c6e8480c
 
 > Pre-flight verified (2026-06-13): with an unfunded key the script reaches `getCapabilities` +
 > `getFeeData` on Base mainnet and reports `feeAmount: 10000` (0.01 USDC) before the funds guard —
