@@ -14,8 +14,9 @@ Built for the **MetaMask Smart Accounts Kit × 1Shot API × Venice AI Dev Cook-O
 [`AttributionLedger`](https://sepolia.etherscan.io/address/0xE92254E3722D190ffC77C0aCa6856610708b9246) `0xE922…9246` ·
 [`NameRegistry`](https://sepolia.etherscan.io/address/0xE9DC8a36e8f14c85E687eEe26978692dA98cbeab) `0xE9DC…beab` ·
 [`UnclaimedEscrow`](https://sepolia.etherscan.io/address/0x851C251411Fe4F4bab586F775c7450f86A348EAD) `0x851C…8EAD` ·
-[`AgentRegistry8004`](https://sepolia.etherscan.io/address/0x05465b9887D7952fAC76DF42D193aae55EbA5891) `0x0546…5891`
-(USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet).
+[`AgentRegistry8004`](https://sepolia.etherscan.io/address/0x05465b9887D7952fAC76DF42D193aae55EbA5891) `0x0546…5891` ·
+[`BountyMarket`](https://sepolia.etherscan.io/address/0xeC274B5B770e24B0Aef8aF75EAAa7fC9CF7DF5c6) `0xeC27…F5c6`
+(USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet). 37 tests (28 Foundry + 9 Vitest).
 
 **Multi-agent (4 agents):** Researcher → redelegates to Reader, **Fact-checker** (2nd Venice web
 search), Summarizer — each a real ERC-8004 on-chain principal with reputation. Unclaimed author
