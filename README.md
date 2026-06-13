@@ -12,8 +12,14 @@ Built for the **MetaMask Smart Accounts Kit × 1Shot API × Venice AI Dev Cook-O
 
 **On-chain (Ethereum Sepolia):**
 [`AttributionLedger`](https://sepolia.etherscan.io/address/0xE92254E3722D190ffC77C0aCa6856610708b9246) `0xE922…9246` ·
-[`NameRegistry`](https://sepolia.etherscan.io/address/0xE9DC8a36e8f14c85E687eEe26978692dA98cbeab) `0xE9DC…beab`
+[`NameRegistry`](https://sepolia.etherscan.io/address/0xE9DC8a36e8f14c85E687eEe26978692dA98cbeab) `0xE9DC…beab` ·
+[`UnclaimedEscrow`](https://sepolia.etherscan.io/address/0x851C251411Fe4F4bab586F775c7450f86A348EAD) `0x851C…8EAD` ·
+[`AgentRegistry8004`](https://sepolia.etherscan.io/address/0x05465b9887D7952fAC76DF42D193aae55EbA5891) `0x0546…5891`
 (USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet).
+
+**Multi-agent (4 agents):** Researcher → redelegates to Reader, **Fact-checker** (2nd Venice web
+search), Summarizer — each a real ERC-8004 on-chain principal with reputation. Unclaimed author
+shares wait in UnclaimedEscrow (verified: owed recorded on-chain), withdrawable after ORCID claim.
 
 ### What's real (no mocks in the critical path)
 - **Real on-chain attestation** — "Record attestation" sends a live `attest()` tx (QueryAttested + AuthorPaid events). e.g. [`0xc61adf4e…`](https://sepolia.etherscan.io/tx/0xc61adf4ee665794ef6a2588c21dd2469ff6d9855129e9d2d0501d94bd1e1c6c8)
