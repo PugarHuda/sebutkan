@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAccount } from "wagmi";
-import { useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { parseUnits } from "viem";
 import { BOUNTY_MARKET, BOUNTY_ABI, ERC20_APPROVE_ABI, topicHash } from "@/lib/bounty";
 import { USDC, PERMISSION_CHAIN } from "@/lib/chains";
@@ -21,6 +20,7 @@ type Bounty = {
 
 export default function BountiesPage() {
   const { isConnected } = useAccount();
+  const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const [topic, setTopic] = useState("");
   const [amount, setAmount] = useState(1);
@@ -41,14 +41,19 @@ export default function BountiesPage() {
     if (!topic.trim() || !BOUNTY_MARKET) return;
     try {
       const amt = parseUnits(String(amount), 6);
-      setStatus("Approving USDC…");
-      await writeContractAsync({
+      setStatus("Approving USDC… (confirm in wallet)");
+      const approveTx = await writeContractAsync({
         address: usdc,
         abi: ERC20_APPROVE_ABI,
         functionName: "approve",
         args: [BOUNTY_MARKET, amt],
       });
-      setStatus("Creating bounty…");
+      // Wait for the approval to be mined before sending `create`. A 7702-delegated
+      // wallet allows only ONE in-flight tx, so firing create while approve is still
+      // pending throws "in-flight transaction limit reached for delegated accounts".
+      setStatus("Waiting for approval to confirm on-chain…");
+      await publicClient?.waitForTransactionReceipt({ hash: approveTx });
+      setStatus("Creating bounty… (confirm in wallet)");
       const tx = await writeContractAsync({
         address: BOUNTY_MARKET,
         abi: BOUNTY_ABI,
@@ -66,7 +71,12 @@ export default function BountiesPage() {
       setTopic("");
       setTimeout(load, 5000);
     } catch (e) {
-      setStatus(`error: ${e instanceof Error ? e.message : String(e)}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/in-flight transaction limit/i.test(msg)) {
+        setStatus("Your wallet still has a pending transaction. Wait a few seconds for it to confirm, then try again.");
+      } else {
+        setStatus(`error: ${msg}`);
+      }
     }
   }
 

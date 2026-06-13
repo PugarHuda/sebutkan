@@ -7,7 +7,7 @@ import { keccak256, encodePacked, getAddress } from "viem";
 import { ESCROW_ABI } from "@/lib/escrow";
 import { CITATION_YIELD, YIELD_ABI, identityId } from "@/lib/yield";
 
-type Bonus = { pendingUSDC6: string; apyBps: number; sinceUnix: number; claimed: boolean } | null;
+type Bonus = { principalUSDC6: string; pendingUSDC6: string; apyBps: number; sinceUnix: number; claimed: boolean } | null;
 
 type Status = {
   enabled: boolean;
@@ -56,7 +56,7 @@ export default function ClaimPage() {
     }
     try {
       const b = await fetch(`/api/bonus?identity=${encodeURIComponent(verifiedOrcid)}`).then((x) => x.json());
-      setBonus(b?.configured ? { pendingUSDC6: b.pendingUSDC6, apyBps: b.apyBps, sinceUnix: b.sinceUnix, claimed: b.claimed } : null);
+      setBonus(b?.configured ? { principalUSDC6: b.principalUSDC6, pendingUSDC6: b.pendingUSDC6, apyBps: b.apyBps, sinceUnix: b.sinceUnix, claimed: b.claimed } : null);
     } catch {
       setBonus(null);
     }
@@ -269,13 +269,21 @@ export default function ClaimPage() {
                       {(bonus.apyBps / 100).toFixed(0)}% APR
                     </span>
                   </span>
-                  <span className="font-mono text-sm font-semibold text-[var(--accent)]">
-                    +{(Number(bonus.pendingUSDC6) / 1e6).toFixed(4)} USDC
-                  </span>
+                  <LiveYield
+                    principalUSDC6={bonus.principalUSDC6}
+                    pendingUSDC6={bonus.pendingUSDC6}
+                    apyBps={bonus.apyBps}
+                    sinceUnix={bonus.sinceUnix}
+                    claimed={bonus.claimed}
+                  />
                 </div>
                 <p className="mt-1 text-[11px] text-neutral-500">
-                  A protocol-funded bonus that accrues the longer your rewards stay unclaimed — passive
-                  earning while you wait. {bonus.claimed ? "Already claimed." : "Claim it any time."}
+                  A protocol-funded bonus that accrues live, every second, the longer your rewards
+                  stay unclaimed — real passive earning while you wait
+                  {Number(bonus.principalUSDC6) > 0
+                    ? ` (≈ ${((Number(bonus.principalUSDC6) / 1e6) * (bonus.apyBps / 10000)).toFixed(4)} USDC/year on your ${(Number(bonus.principalUSDC6) / 1e6).toFixed(2)} USDC)`
+                    : ""}
+                  . {bonus.claimed ? "Already claimed." : "Claim it any time."}
                 </p>
                 <button
                   onClick={handleClaimBonus}
@@ -299,5 +307,58 @@ export default function ClaimPage() {
         ) : null}
       </div>
     </main>
+  );
+}
+
+/**
+ * Live citation-loyalty yield counter. Recomputes pendingBonus client-side every
+ * ~150ms using the EXACT same linear-APR formula the contract uses
+ * (principal · apyBps · elapsed / (365d · 10000), capped at 50% of principal), so
+ * the number visibly ticks up between blocks. Honest, not faked: it only
+ * extrapolates the on-chain state to the current second — the value the contract
+ * would return right now — and never drops below the last confirmed on-chain value.
+ */
+function LiveYield({
+  principalUSDC6,
+  pendingUSDC6,
+  apyBps,
+  sinceUnix,
+  claimed,
+}: {
+  principalUSDC6: string;
+  pendingUSDC6: string;
+  apyBps: number;
+  sinceUnix: number;
+  claimed: boolean;
+}) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (claimed) return;
+    const t = setInterval(() => setNowMs(Date.now()), 150);
+    return () => clearInterval(t);
+  }, [claimed]);
+
+  const principal = Number(principalUSDC6) / 1e6;
+  const onchainPending = Number(pendingUSDC6) / 1e6;
+  if (claimed || principal === 0 || !sinceUnix) {
+    return (
+      <span className="font-mono text-sm font-semibold text-[var(--accent)]">
+        +{onchainPending.toFixed(4)} USDC
+      </span>
+    );
+  }
+  const elapsed = Math.max(0, nowMs / 1000 - sinceUnix);
+  const perYear = principal * (apyBps / 10_000);
+  let pending = (perYear * elapsed) / (365 * 24 * 3600);
+  const cap = principal * 0.5;
+  if (pending > cap) pending = cap;
+  if (pending < onchainPending) pending = onchainPending; // never below confirmed chain value
+  return (
+    <span
+      className="font-mono text-sm font-semibold tabular-nums text-[var(--accent)]"
+      title="Accruing live — the same linear-APR formula CitationYield pays out, extrapolated to this second"
+    >
+      +{pending.toFixed(8)} USDC
+    </span>
   );
 }

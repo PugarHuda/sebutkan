@@ -5,13 +5,29 @@ import { usePathname } from "next/navigation";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { pickFlaskConnector } from "@/lib/wagmi";
 
-const NAV = [
-  { href: "/dashboard", label: "Overview", glyph: "◇" },
-  { href: "/dashboard/research", label: "Research", glyph: "❝" },
-  { href: "/dashboard/agents", label: "Agents", glyph: "✦" },
-  { href: "/dashboard/bounties", label: "Bounties", glyph: "◈" },
-  { href: "/dashboard/activity", label: "Activity", glyph: "≣" },
-  { href: "/dashboard/claim", label: "Claim & Rewards", glyph: "◉" },
+const NAV_SECTIONS: {
+  title: string;
+  items: { href: string; label: string; glyph: string; hint: string }[];
+}[] = [
+  {
+    title: "Discover",
+    items: [
+      { href: "/dashboard", label: "Overview", glyph: "◇", hint: "What Sebutkan is" },
+      { href: "/dashboard/research", label: "Research", glyph: "❝", hint: "Ask · cited papers · results saved here" },
+      { href: "/dashboard/agents", label: "Agents", glyph: "✦", hint: "The AI mesh & reputation" },
+    ],
+  },
+  {
+    title: "Earn",
+    items: [
+      { href: "/dashboard/bounties", label: "Bounties", glyph: "◈", hint: "Sponsor a research topic" },
+      { href: "/dashboard/claim", label: "Claim & Rewards", glyph: "◉", hint: "Authors: get paid + loyalty yield" },
+    ],
+  },
+  {
+    title: "Monitor",
+    items: [{ href: "/dashboard/activity", label: "Activity", glyph: "≣", hint: "On-chain payments & leaderboard" }],
+  },
 ];
 
 export function Sidebar() {
@@ -29,26 +45,37 @@ export function Sidebar() {
         <span className="serif text-lg font-semibold">Sebutkan</span>
       </Link>
 
-      <nav className="flex flex-col gap-1">
-        {NAV.map((n) => {
-          const active = pathname === n.href;
-          return (
-            <Link
-              key={n.href}
-              href={n.href}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition ${
-                active
-                  ? "bg-[var(--accent-soft)] font-medium text-[var(--accent)]"
-                  : "text-[var(--ink)]/70 hover:bg-[var(--accent-soft)]/60"
-              }`}
-            >
-              <span className={`w-4 text-center ${active ? "text-[var(--accent)]" : "text-[var(--muted)]"}`}>
-                {n.glyph}
-              </span>
-              {n.label}
-            </Link>
-          );
-        })}
+      <nav className="flex flex-col gap-4">
+        {NAV_SECTIONS.map((section) => (
+          <div key={section.title} className="flex flex-col gap-0.5">
+            <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--muted)]">
+              {section.title}
+            </div>
+            {section.items.map((n) => {
+              const active = pathname === n.href;
+              return (
+                <Link
+                  key={n.href}
+                  href={n.href}
+                  title={n.hint}
+                  className={`flex items-start gap-3 rounded-md px-3 py-2 text-sm transition ${
+                    active
+                      ? "bg-[var(--accent-soft)] font-medium text-[var(--accent)]"
+                      : "text-[var(--ink)]/70 hover:bg-[var(--accent-soft)]/60"
+                  }`}
+                >
+                  <span className={`mt-0.5 w-4 text-center ${active ? "text-[var(--accent)]" : "text-[var(--muted)]"}`}>
+                    {n.glyph}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block leading-tight">{n.label}</span>
+                    <span className="block text-[10px] leading-tight text-[var(--muted)]">{n.hint}</span>
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       <div className="mt-auto space-y-3 pt-6">
