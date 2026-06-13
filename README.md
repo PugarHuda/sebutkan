@@ -16,8 +16,9 @@ Built for the **MetaMask Smart Accounts Kit × 1Shot API × Venice AI Dev Cook-O
 [`UnclaimedEscrow`](https://sepolia.etherscan.io/address/0x851C251411Fe4F4bab586F775c7450f86A348EAD) `0x851C…8EAD` ·
 [`AgentRegistry8004`](https://sepolia.etherscan.io/address/0x05465b9887D7952fAC76DF42D193aae55EbA5891) `0x0546…5891` ·
 [`BountyMarket`](https://sepolia.etherscan.io/address/0xeC274B5B770e24B0Aef8aF75EAAa7fC9CF7DF5c6) `0xeC27…F5c6` ·
-[`ShareRegistry`](https://sepolia.etherscan.io/address/0x52759E09d3C70ca281c59da3122a7AF8dFA51847) `0x5275…1847`
-(USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet). 93 tests (32 Foundry + 61 Vitest).
+[`ShareRegistry`](https://sepolia.etherscan.io/address/0x52759E09d3C70ca281c59da3122a7AF8dFA51847) `0x5275…1847` ·
+[`CitationYield`](https://sepolia.etherscan.io/address/0x3Fdf80368d464078a4733B3b264457D009E5cfA3) `0x3Fdf…cfA3`
+(USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet). 100 tests (37 Foundry + 63 Vitest).
 
 **Multi-agent orchestration (real A2A, 5 on-chain agents):** a **Planner** decomposes the question into
 focused sub-questions; the Researcher redelegates strictly-narrowed sub-budgets to a **Reader fan-out**
