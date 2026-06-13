@@ -17,16 +17,24 @@ const cap = (s: string | undefined, n: number) => (s && s.length > n ? `${s.slic
 function slimForShare(r: ResearchResult): ResearchResult {
   return {
     ...r,
-    synthesis: cap(r.synthesis, 2400) ?? "",
-    summary: cap(r.summary, 400),
-    verification: cap(r.verification, 700),
+    synthesis: cap(r.synthesis, 1800) ?? "",
+    summary: cap(r.summary, 320),
+    verification: cap(r.verification, 500),
     works: [],
-    webCitations: (r.webCitations ?? []).slice(0, 4).map((c) => ({ title: cap(c.title, 120), url: c.url })),
-    payouts: (r.payouts ?? []).slice(0, 8).map((p) => ({
-      ...p,
-      workTitle: cap(p.workTitle, 140) ?? "",
+    webCitations: (r.webCitations ?? []).slice(0, 3).map((c) => ({ title: cap(c.title, 100), url: c.url })),
+    // Keep only what the public /r page renders (name, title, url, share) — drop
+    // the wallet/identity/claimed fields to keep the stored blob small.
+    payouts: (r.payouts ?? []).slice(0, 6).map((p) => ({
+      author: "0x0000000000000000000000000000000000000000",
+      authorName: p.authorName,
+      workTitle: cap(p.workTitle, 90) ?? "",
+      url: p.url,
+      weightBps: p.weightBps,
+      identity: "",
+      claimed: false,
     })),
-    agentTrace: (r.agentTrace ?? []).map((s) => ({ ...s, detail: cap(s.detail, 160) ?? "" })),
+    // Trace: keep the shape (agent/action/status/budget/redelegation), drop long detail.
+    agentTrace: (r.agentTrace ?? []).map((s) => ({ ...s, detail: cap(s.detail, 70) ?? "" })),
   };
 }
 
