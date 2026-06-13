@@ -1,3 +1,15 @@
+# Vercel KV — unlocks 3 features (~2 min, one-time)
+
+Provisioning a tiny Upstash/Vercel KV makes three serverless features robust across instances:
+1. **Public share links** (`/r/<id>`) — also works on-chain by default (no KV needed), KV just makes it faster.
+2. **Agent memory** — the Planner recalls related prior research across requests (without KV it only persists within one warm serverless instance).
+3. **1Shot webhook status** — the verified webhook status survives across instances.
+
+All three are fully coded + unit-tested; KV is purely a runtime persistence config. Set
+`KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL`/`_TOKEN`) and redeploy.
+
+---
+
 # Public share links — one-time setup (~2 min)
 
 The **4 · Share public link** button persists a finished research result server-side and returns a
