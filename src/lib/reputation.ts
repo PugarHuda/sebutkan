@@ -11,7 +11,7 @@
  * can bump — exactly the ERC-8004 trust model. Best-effort + sequential to keep
  * the operator nonce clean; a failed bump never blocks settlement.
  */
-import { createWalletClient, http, type Address } from "viem";
+import { createPublicClient, createWalletClient, http, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { PERMISSION_CHAIN } from "./chains";
 
@@ -52,9 +52,13 @@ export async function bumpReputations(
 
   const account = privateKeyToAccount(opKey);
   const wallet = createWalletClient({ account, chain: PERMISSION_CHAIN, transport: http(rpcUrl()) });
+  const pub = createPublicClient({ chain: PERMISSION_CHAIN, transport: http(rpcUrl()) });
 
   const unique = [...new Set(agentIds)].filter((id) => AGENT_ADDRESSES[id]);
   const out: { agent: string; txHash?: string; error?: string }[] = [];
+  // Manage the nonce explicitly: writeContract in a tight loop otherwise reuses
+  // the same pending nonce → "replacement transaction underpriced". One nonce per bump.
+  let nonce = await pub.getTransactionCount({ address: account.address, blockTag: "pending" });
   for (const id of unique) {
     try {
       const txHash = await wallet.writeContract({
@@ -62,9 +66,17 @@ export async function bumpReputations(
         abi: BUMP_ABI,
         functionName: "bumpReputation",
         args: [AGENT_ADDRESSES[id]],
+        nonce,
       });
+      nonce++;
       out.push({ agent: id, txHash });
     } catch (e) {
+      // A nonce gap can desync our counter — resync from chain before continuing.
+      try {
+        nonce = await pub.getTransactionCount({ address: account.address, blockTag: "pending" });
+      } catch {
+        /* keep going */
+      }
       out.push({ agent: id, error: e instanceof Error ? e.message : String(e) });
     }
   }

@@ -598,7 +598,7 @@ export default function ResearchPage() {
               </p>
             ) : null}
             <article className="whitespace-pre-wrap rounded-md bg-[var(--paper)] p-4 text-sm leading-relaxed text-[var(--ink)]/90">
-              {research.result.synthesis}
+              <CitedText text={research.result.synthesis} works={research.result.works} />
             </article>
 
             {research.result.summary ? (
@@ -678,7 +678,7 @@ export default function ResearchPage() {
                   ❝ Fact-checker agent {research.result.confidence ? `· ${research.result.confidence} confidence` : ""}
                 </h3>
                 <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-[var(--ink)]/80">
-                  {research.result.verification}
+                  <CitedText text={research.result.verification} works={research.result.works} />
                 </p>
               </div>
             ) : null}
@@ -977,6 +977,36 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function ErrorBox({ children }: { children: React.ReactNode }) {
   return <p className="mt-4 rounded-md bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40">{children}</p>;
+}
+
+/** Render text with clickable [n] / ^n^ citations linking to the n-th cited paper. */
+function CitedText({ text, works }: { text: string; works: { url: string; title: string }[] }) {
+  const parts = text.split(/(\[\d+\]|\^\d+\^)/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (/^(\[\d+\]|\^\d+\^)$/.test(part)) {
+          const n = Number(part.replace(/\D/g, ""));
+          const w = works[n - 1];
+          if (w?.url) {
+            return (
+              <a
+                key={i}
+                href={w.url}
+                target="_blank"
+                rel="noreferrer"
+                title={w.title.replace(/<[^>]+>/g, "")}
+                className="font-medium text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-500"
+              >
+                [{n}]
+              </a>
+            );
+          }
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
 }
 
 function bigintReplacer(_key: string, value: unknown) {
