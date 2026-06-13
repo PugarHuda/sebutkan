@@ -50,8 +50,8 @@ export default function Home() {
           },
           {
             n: "II.",
-            t: "The agent works",
-            d: "It searches the corpus, pays for papers via x402, reads with Venice (private + uncensored), and redelegates to a Summarizer.",
+            t: "The agents work",
+            d: "The Researcher pays for papers via x402, then redelegates strictly narrower budgets to a Planner, parallel Readers, a Fact-checker, and a Summarizer — all reasoning with Venice (private + uncensored).",
           },
           {
             n: "III.",
@@ -71,9 +71,9 @@ export default function Home() {
       <section className="mt-12 w-full max-w-4xl">
         <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-center text-xs text-[var(--muted)]">
           {[
-            "ERC-7715 grant proven on Sepolia",
+            "ERC-7715 Advanced Permissions (Flask)",
             "x402 paid on-chain",
-            "1Shot gasless relay verified",
+            "1Shot 7710 + 7702 relay on Base mainnet",
             "on-chain attestation",
             "ORCID OAuth",
           ].map((p, i) => (

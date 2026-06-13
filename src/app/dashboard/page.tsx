@@ -21,8 +21,8 @@ export default function Overview() {
 
   const stats = [
     { k: "Attestations", v: d?.totals?.attestations ?? "—" },
-    { k: "Authors paid", v: d?.totals?.authorsPaid ?? "—" },
-    { k: "USDC routed", v: d ? `${(totalPaid / 1e6).toFixed(2)}` : "—" },
+    { k: "Author payouts", v: d?.totals?.authorsPaid ?? "—" },
+    { k: "USDC attributed", v: d ? `${(totalPaid / 1e6).toFixed(2)}` : "—" },
     { k: "Cited authors", v: d?.leaderboard?.length ?? "—" },
   ];
 
