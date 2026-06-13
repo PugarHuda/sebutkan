@@ -2,64 +2,66 @@
 
 **Tagline:** The research agent that cites *and pays* its sources.
 
-**One-liner:** Grant one scoped MetaMask permission; an AI agent buys papers, reads
-them with Venice, and splits USDC back to every author it cites — gasless,
-non-custodial, with a real on-chain attestation of every citation.
+**One-liner:** Grant one scoped MetaMask Advanced Permission; an autonomous AI agent buys papers,
+reads them with Venice, and splits USDC back to every author it cites — gasless, non-custodial, with
+a real on-chain attestation of every citation and an A2A mesh of redelegated specialist agents.
 
-**Live demo:** https://sebutkan.vercel.app · **Repo:** https://github.com/PugarHuda/sebutkan
-**Demo video:** <paste link> · **Chain:** Ethereum Sepolia
+- **Live app:** https://sebutkan.vercel.app
+- **Repo:** https://github.com/PugarHuda/sebutkan
+- **Demo video:** _<paste link>_ — must show MetaMask Smart Accounts Kit working in the main flow + 1Shot usage.
 
 ---
 
-## What it is
+## What it does (the flow a judge sees)
 
-AI systems read the world's research and pay the creators nothing. Sebutkan flips
-that. The user signs a single **ERC-7715 Advanced Permission** — a periodic USDC
-budget — and from then on an autonomous research agent operates within a
-cryptographically enforced cap it can never exceed. For each question it:
+1. **Grant once** — the user signs ONE **ERC-7715** Advanced Permission (a periodic USDC budget, e.g. "10 USDC/day, 24h"). The agent can never exceed it; the user keeps custody. (MetaMask Flask)
+2. **Agent mesh works** — the Researcher pays for the top paper via **x402** (on-chain USDC), then **redelegates** strictly narrower budgets (**ERC-7710**) to: a **Planner** (splits the question), a budget-scaled **Reader fan-out** (one per sub-question), a **Citation-Matcher** (Venice embeddings), a **Fact-checker** (can reject → force a revision), and a **Summarizer**. All reason with **Venice** (private + uncensored). Each agent is a real on-chain principal in the **ERC-8004** registry and earns reputation.
+3. **Authors are paid** — the citation payout is recorded on-chain (`AttributionLedger`) and settled to authors gaslessly via the **1Shot** relayer (or atomically via `attestAndSplit`, a real USDC transfer). Unclaimed shares wait in escrow until the author binds their **ORCID** + wallet.
 
-1. searches a real corpus (OpenAlex),
-2. pays a small **x402** micropayment to unlock the top paper (verified on-chain),
-3. reads + synthesizes with **Venice** (private, uncensored) + web-search citations,
-4. computes a weighted payout to each cited author,
-5. records a **real on-chain attestation** and pays the authors **gasless via 1Shot**.
+---
 
-Authors bind their real wallet at `/claim` (sign `keccak256(authorId, wallet)`,
-operator-relayed NameRegistry bind); unclaimed authors get a clearly-labeled demo
-wallet. The user keeps custody and never signs again.
+## On-chain proof (all real, no mocks in the critical path)
 
-## Track-by-track
+**Contracts (Ethereum Sepolia, chain 11155111):**
+| Contract | Address |
+|---|---|
+| AttributionLedger | `0xE92254E3722D190ffC77C0aCa6856610708b9246` |
+| NameRegistry (ORCID→wallet) | `0xE9DC8a36e8f14c85E687eEe26978692dA98cbeab` |
+| UnclaimedEscrow | `0x851C251411Fe4F4bab586F775c7450f86A348EAD` |
+| AgentRegistry8004 | `0x05465b9887D7952fAC76DF42D193aae55EbA5891` |
+| BountyMarket | `0xeC274B5B770e24B0Aef8aF75EAAa7fC9CF7DF5c6` |
+| ShareRegistry | `0x52759E09d3C70ca281c59da3122a7AF8dFA51847` |
 
-- **Best x402 + ERC-7710** — the agent pays an x402 micropayment to unlock a paper;
-  the resource verifies the USDC payment **on-chain** (not a header stub). Author
-  payouts redeem the granted ERC-7710 delegation via 1Shot. x402's ERC-7710 method
-  is spec-sanctioned and uniquely multi-use.
-- **Best Agent** — the whole product is an autonomous agent whose ERC-7715 permission
-  is the centre of the UX ("one signature, then it runs within your cap").
-- **Best A2A coordination** — the Researcher **redelegates** a strictly narrower slice
-  (≤5% budget, ≤25% expiry, scoped) to a Summarizer sub-agent; authority only narrows.
-- **Best use of Venice AI** — four endpoints, each in the main flow: chat + web-search
-  (synthesis with citations), image (citation receipt card), TTS (audio briefing).
-  Private/uncensored is the enabler.
-- **Best Use of 1Shot Relayer** — gasless author payouts via `relayer_send7710Transaction`
-  (`.dev` testnet / `.com` mainnet), gas paid in stablecoins, EIP-7702 upgrade, and an
-  **Ed25519 webhook** receiver (`/api/relayer-webhook`) as the status source of truth.
+**1Shot mainnet relay (Base 8453):** tx [`0x6f4c8d539f9ea34f7e6e0d0730e4ae04fec1d986e5d0641b8b36ab00c6e8480c`](https://basescan.org/tx/0x6f4c8d539f9ea34f7e6e0d0730e4ae04fec1d986e5d0641b8b36ab00c6e8480c) — type `0x4` (EIP-7702 SetCode), relayed by the 1Shot permissionless relayer, gas paid in USDC.
 
-## What's real (verifiable)
+**73 tests** (32 Foundry + 41 Vitest), all green. No mocks in the critical path.
 
-- On-chain attestation: live `attest()` tx (QueryAttested + AuthorPaid events) —
-  e.g. `0xc61adf4ee665794ef6a2588c21dd2469ff6d9855129e9d2d0501d94bd1e1c6c8`.
-- `AttributionLedger` `0xE92254E3722D190ffC77C0aCa6856610708b9246` ·
-  `NameRegistry` `0xE9DC8a36e8f14c85E687eEe26978692dA98cbeab` (Ethereum Sepolia).
-- 23 tests (14 Foundry + 9 Vitest), production build + live deploy.
+---
 
-## Tech
+## Per-track qualification (copy into each track's submission)
 
-MetaMask Smart Accounts Kit (`@metamask/smart-accounts-kit`) · 1Shot Permissionless
-Relayer · Venice AI · x402 · Next.js 16 · viem · wagmi · Foundry (Solidity 0.8.24).
+### Best x402 + ERC-7710 — $3,000
+Sebutkan uses **MetaMask Advanced Permissions (ERC-7715)** so the agent does **x402** payments settled by redeeming an **ERC-7710** delegation. The agent pays a real USDC micropayment to unlock the top paper; the resource verifies the payment **on-chain** (not a header stub). We also ship a **standalone x402 7710 facilitator** (`/api/facilitator/{supported,verify,settle}`) that verifies the ERC-7710 "exact" payment and settles it gaslessly on the 1Shot relayer. *Demo shows the MetaMask Smart Accounts Kit grant + x402 payment.*
 
-## Reproduce
+### Best Agent — $3,000
+An autonomous research agent operating under one scoped MetaMask permission, in the main flow. It's a **5-agent mesh** (Planner, Reader fan-out, Citation-Matcher, Fact-checker, Summarizer) with a real coordination loop (the Fact-checker can reject a weak answer and force a Researcher revision), **budget-scaled fan-out**, **relevance-weighted payouts** (Venice embeddings), and **on-chain ERC-8004 reputation** that contributors earn after settlement (verified `bumpReputation` txs).
 
-See [SETUP.md](./SETUP.md). The research flow runs free (OpenAlex + Venice dev
-fallback); ERC-7715 + redeem need MetaMask Flask on Sepolia; the 1Shot mainnet relay
-needs ~$2 USDC on Base.
+### Best A2A coordination — $3,000
+The Researcher **redelegates** strictly narrower budgets (ERC-7710) to each specialist — authority only ever shrinks. We prove a **literal two-hop redelegation** (User → Researcher → relayer, via the SDK's `createDelegation({ parentDelegation })`) that is redeemed on-chain through 1Shot (`scripts/test-redelegation-1shot.mjs`). The agents are real ERC-8004 on-chain principals.
+
+### Best use of Venice AI — $3,000
+Venice is the agent's brain across **five endpoints in the main flow**: chat, **web search** (grounded citations), **embeddings** (the Citation-Matcher that weights payouts), **image** (citation-receipt card), and **TTS** (audio briefing). Private + uncensored = research anything. Qualifies via the three main tracks above.
+
+### Best Use of 1Shot Permissionless Relayer — $1,000 USDC
+We relay a **7710 transaction through the 1Shot mainnet relayer** with an **EIP-7702 authorization** upgrading the EOA to a smart account — gas paid in USDC. Proof: Base tx `0x6f4c8d53…` (type 0x4). We also built an **x402 7710 facilitator on top of the public relayer** (the track's suggested bonus direction) and wired the **Ed25519 webhook** receiver as the status source.
+
+### Best Social Media presence — $100 × 5
+See `SOCIAL.md` — posts tagging **@MetaMaskDev** that lead with the one-permission UX story (how ERC-7715 Advanced Permissions streamlined getting spending authority from the user). _Post + attach a clip._
+
+### Best Feedback — $100 × 5
+See `FEEDBACK.md` — actionable feedback on the Smart Accounts Kit, 1Shot relayer (the getStatus `hex2.startsWith` bug; the "exactly one 7702 authorization" limit), Venice, and the docs.
+
+---
+
+## ⚠️ Mandatory for every technical track
+> "The project demo video should have a working MetaMask Smart Accounts Kit implementation." — Record the demo (per-scene script in `STORYBOARD.md`) showing: connect Flask → grant ERC-7715 → agent mesh trace → x402 + attestation on Etherscan → 1Shot relay. Without it, the technical tracks do not qualify.

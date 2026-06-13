@@ -17,7 +17,7 @@ Built for the **MetaMask Smart Accounts Kit × 1Shot API × Venice AI Dev Cook-O
 [`AgentRegistry8004`](https://sepolia.etherscan.io/address/0x05465b9887D7952fAC76DF42D193aae55EbA5891) `0x0546…5891` ·
 [`BountyMarket`](https://sepolia.etherscan.io/address/0xeC274B5B770e24B0Aef8aF75EAAa7fC9CF7DF5c6) `0xeC27…F5c6` ·
 [`ShareRegistry`](https://sepolia.etherscan.io/address/0x52759E09d3C70ca281c59da3122a7AF8dFA51847) `0x5275…1847`
-(USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet). 73 tests (32 Foundry + 41 Vitest).
+(USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet). 82 tests (32 Foundry + 50 Vitest).
 
 **Multi-agent orchestration (real A2A, 5 on-chain agents):** a **Planner** decomposes the question into
 focused sub-questions; the Researcher redelegates strictly-narrowed sub-budgets to a **Reader fan-out**
@@ -38,7 +38,8 @@ permalink** (`/r/<id>`) — stored on-chain in ShareRegistry by default (zero-in
 - **Real x402** — the agent pays a USDC micropayment to unlock the top paper; the resource verifies the payment **on-chain** (not a header stub).
 - **Real 1Shot** — live `getCapabilities`/`getFeeData`; gasless redeem builds a signed delegation to the relayer `targetAddress`; **Ed25519 webhook** receiver verifies status against the JWKS.
 - **Real multi-agent coordination** — a Planner decomposes the query into a budget-scaled Reader fan-out, a **Citation-Matcher** (Venice embeddings) drives **relevance-weighted payouts**, a Fact-checker forces a Researcher revision on low confidence, and an on-chain ERC-8004 reputation feedback loop rewards contributors (verified: live `bumpReputation` txs). A **literal two-hop redelegation** (User→Researcher→relayer) can be redeemed on a mainnet via 1Shot (`scripts/test-redelegation-1shot.mjs`).
-- **73 tests** — 32 Foundry + 41 Vitest, all green.
+- **x402 7710 facilitator** — /api/facilitator/{supported,verify,settle}: verifies the ERC-7710 exact payment and settles it gaslessly on the 1Shot relayer (the track's suggested bonus).
+- **82 tests** — 32 Foundry + 50 Vitest, all green.
 
 ---
 
