@@ -89,7 +89,11 @@ export default function Home() {
         Built for the MetaMask Smart Accounts Kit × 1Shot × Venice AI Dev Cook-Off ·{" "}
         <a href="https://github.com/PugarHuda/sebutkan" className="link-accent">
           GitHub
-        </a>
+        </a>{" "}
+        ·{" "}
+        <Link href="/slide" className="link-accent">
+          Pitch deck
+        </Link>
       </footer>
     </div>
   );
