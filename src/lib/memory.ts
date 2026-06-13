@@ -10,10 +10,14 @@
  * The matching (keyword extraction + Jaccard relatedness) is pure and unit-tested.
  */
 
+import { canUseOnchainStore, getOnchain, putOnchain } from "./onchain-store";
+
 const URL_ENV = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
 const TOKEN_ENV = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
 const KEY = "agent:memory";
 const MAX = 100;
+// On-chain index is bounded harder (gas grows with size).
+const ONCHAIN_MAX = 12;
 
 export type Memory = { query: string; takeaway: string; at: number; keywords: string[] };
 
@@ -75,39 +79,59 @@ async function kv(args: (string | number)[]): Promise<unknown> {
 }
 const kvOn = () => Boolean(URL_ENV && TOKEN_ENV);
 
-/** Load all memories (most-recent-first). */
+/** Load all memories (most-recent-first). Source: KV → on-chain → in-memory. */
 export async function loadMemories(): Promise<Memory[]> {
-  if (!kvOn()) return [...mem()].sort((a, b) => b.at - a.at);
-  try {
-    const raw = (await kv(["GET", KEY])) as string | null;
-    const arr = raw ? (JSON.parse(raw) as Memory[]) : [];
-    return arr.sort((a, b) => b.at - a.at);
-  } catch {
-    return [];
+  if (kvOn()) {
+    try {
+      const raw = (await kv(["GET", KEY])) as string | null;
+      return (raw ? (JSON.parse(raw) as Memory[]) : []).sort((a, b) => b.at - a.at);
+    } catch {
+      return [];
+    }
   }
+  if (canUseOnchainStore()) {
+    try {
+      const raw = await getOnchain(KEY);
+      if (raw) return (JSON.parse(raw) as Memory[]).sort((a, b) => b.at - a.at);
+    } catch {
+      /* fall through */
+    }
+  }
+  return [...mem()].sort((a, b) => b.at - a.at);
 }
 
-/** Remember a completed run (deduped by query). Best-effort. */
+/** Remember a completed run (deduped by query). Best-effort. KV → on-chain → in-memory. */
 export async function remember(query: string, takeaway: string, nowMs: number = Date.now()): Promise<void> {
   const entry: Memory = { query: query.trim(), takeaway: takeaway.slice(0, 200), at: nowMs, keywords: keywordsOf(query) };
   if (!entry.query) return;
   const key = entry.query.toLowerCase();
-  if (!kvOn()) {
-    const a = mem();
-    const i = a.findIndex((m) => m.query.toLowerCase() === key);
-    if (i >= 0) a.splice(i, 1);
-    a.unshift(entry);
-    if (a.length > MAX) a.length = MAX;
-    return;
+  const dedup = (arr: Memory[], cap: number) => [entry, ...arr.filter((m) => m.query.toLowerCase() !== key)].slice(0, cap);
+
+  if (kvOn()) {
+    try {
+      const raw = (await kv(["GET", KEY])) as string | null;
+      await kv(["SET", KEY, JSON.stringify(dedup(raw ? JSON.parse(raw) : [], MAX))]);
+      return;
+    } catch {
+      /* fall through to on-chain/memory */
+    }
   }
-  try {
-    const raw = (await kv(["GET", KEY])) as string | null;
-    const arr = (raw ? (JSON.parse(raw) as Memory[]) : []).filter((m) => m.query.toLowerCase() !== key);
-    arr.unshift(entry);
-    await kv(["SET", KEY, JSON.stringify(arr.slice(0, MAX))]);
-  } catch {
-    /* best-effort */
+  if (canUseOnchainStore()) {
+    try {
+      const raw = await getOnchain(KEY);
+      // Trim takeaway/keywords on-chain to keep the blob (and gas) small.
+      const lean = { ...entry, takeaway: entry.takeaway.slice(0, 80) };
+      await putOnchain(KEY, JSON.stringify(dedup(raw ? JSON.parse(raw) : [], ONCHAIN_MAX).map((m) => (m === entry ? lean : m))));
+      return;
+    } catch {
+      /* fall through to in-memory */
+    }
   }
+  const a = mem();
+  const i = a.findIndex((m) => m.query.toLowerCase() === key);
+  if (i >= 0) a.splice(i, 1);
+  a.unshift(entry);
+  if (a.length > MAX) a.length = MAX;
 }
 
 /** Recall prior runs related to a query. */

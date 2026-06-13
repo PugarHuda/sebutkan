@@ -9,6 +9,7 @@
 import * as ed from "@noble/ed25519";
 import crypto from "node:crypto";
 import stringify from "safe-stable-stringify";
+import { canUseOnchainStore, getOnchain, putOnchain } from "./onchain-store";
 
 ed.hashes.sha512 = (m: Uint8Array) =>
   new Uint8Array(crypto.createHash("sha512").update(Buffer.from(m)).digest());
@@ -100,26 +101,42 @@ async function kv(args: (string | number)[]): Promise<unknown> {
   return ((await res.json()) as { result?: unknown }).result;
 }
 
-/** Record the webhook-reported status (KV + in-memory). 1-day TTL on KV. */
+/** Record the webhook-reported status. Persists to KV → on-chain → in-memory. */
 export async function recordStatus(e: StatusEvent): Promise<void> {
   store().set(e.taskId, e);
   if (kvOn()) {
     try {
       await kv(["SET", `relayer-status:${e.taskId}`, JSON.stringify(e), "EX", 86_400]);
+      return;
     } catch {
-      /* best-effort */
+      /* fall through */
+    }
+  }
+  if (canUseOnchainStore()) {
+    try {
+      await putOnchain(`relayer-status:${e.taskId}`, JSON.stringify(e));
+    } catch {
+      /* best-effort — in-memory copy already set */
     }
   }
 }
 
-/** Read the latest verified status for a task (KV first, then in-memory). */
+/** Read the latest verified status for a task. Source: KV → on-chain → in-memory. */
 export async function getStoredStatus(taskId: string): Promise<StatusEvent | undefined> {
   if (kvOn()) {
     try {
       const raw = (await kv(["GET", `relayer-status:${taskId}`])) as string | null;
       if (raw) return JSON.parse(raw) as StatusEvent;
     } catch {
-      /* fall through to memory */
+      /* fall through */
+    }
+  }
+  if (canUseOnchainStore()) {
+    try {
+      const raw = await getOnchain(`relayer-status:${taskId}`);
+      if (raw) return JSON.parse(raw) as StatusEvent;
+    } catch {
+      /* fall through */
     }
   }
   return store().get(taskId);
