@@ -16,18 +16,23 @@ Built for the **MetaMask Smart Accounts Kit × 1Shot API × Venice AI Dev Cook-O
 [`UnclaimedEscrow`](https://sepolia.etherscan.io/address/0x851C251411Fe4F4bab586F775c7450f86A348EAD) `0x851C…8EAD` ·
 [`AgentRegistry8004`](https://sepolia.etherscan.io/address/0x05465b9887D7952fAC76DF42D193aae55EbA5891) `0x0546…5891` ·
 [`BountyMarket`](https://sepolia.etherscan.io/address/0xeC274B5B770e24B0Aef8aF75EAAa7fC9CF7DF5c6) `0xeC27…F5c6`
-(USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet). 37 tests (28 Foundry + 9 Vitest).
+(USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet). 50 tests (28 Foundry + 22 Vitest).
 
-**Multi-agent (4 agents):** Researcher → redelegates to Reader, **Fact-checker** (2nd Venice web
-search), Summarizer — each a real ERC-8004 on-chain principal with reputation. Unclaimed author
-shares wait in UnclaimedEscrow (verified: owed recorded on-chain), withdrawable after ORCID claim.
+**Multi-agent orchestration (real A2A):** the Researcher redelegates strictly-narrowed sub-budgets to a
+**Reader fan-out** (one parallel sub-agent per paper), a **Synthesizer**, and a **Fact-checker** that
+returns a confidence verdict — and on *low* confidence **rejects the answer and forces a Researcher
+revision round** (a genuine coordination loop, not a pipeline). A **Summarizer** condenses the verified
+result. Each agent is a real ERC-8004 on-chain principal, and contributors **earn on-chain reputation**
+after settlement (verified: bumpReputation txs land live) — a feedback loop, not a static badge.
+Unclaimed author shares wait in UnclaimedEscrow (owed recorded on-chain), withdrawable after ORCID claim.
 
 ### What's real (no mocks in the critical path)
 - **Real on-chain attestation** — "Record attestation" sends a live `attest()` tx (QueryAttested + AuthorPaid events). e.g. [`0xc61adf4e…`](https://sepolia.etherscan.io/tx/0xc61adf4ee665794ef6a2588c21dd2469ff6d9855129e9d2d0501d94bd1e1c6c8)
 - **Real author attribution** — `/claim`: an author signs `keccak256(authorId, wallet)`; the operator binds it on-chain in NameRegistry. Payouts route to the real claimed wallet (unclaimed → labeled demo).
 - **Real x402** — the agent pays a USDC micropayment to unlock the top paper; the resource verifies the payment **on-chain** (not a header stub).
 - **Real 1Shot** — live `getCapabilities`/`getFeeData`; gasless redeem builds a signed delegation to the relayer `targetAddress`; **Ed25519 webhook** receiver verifies status against the JWKS.
-- **23 tests** — 14 Foundry + 9 Vitest, all green.
+- **Real multi-agent coordination** — per-paper Reader fan-out, a Fact-checker that forces a Researcher revision on low confidence, and an on-chain ERC-8004 reputation feedback loop (verified: live `bumpReputation` txs).
+- **50 tests** — 28 Foundry + 22 Vitest, all green.
 
 ---
 
@@ -46,7 +51,7 @@ Sebutkan flips that — every citation is an on-chain payment to its author.
 |---|---|
 | **Qualification** | User grants an **ERC-7715** periodic-USDC permission via the MetaMask Smart Accounts Kit, in the main flow |
 | **Best x402 + ERC-7710** | The agent pays for paper access **and Venice inference** via **x402**, settled by redeeming the **ERC-7710** delegation |
-| **Best A2A coordination** | The Researcher agent **redelegates** a *narrowed* slice of its permission to a Summarizer agent — authority only narrows |
+| **Best A2A coordination** | The Researcher **redelegates** narrowed slices to a Reader fan-out + Fact-checker + Summarizer; the Fact-checker can **reject** and force a Researcher revision round (real coordination loop). Authority only ever narrows. Contributors earn on-chain ERC-8004 reputation |
 | **Best use of Venice AI** | Four Venice endpoints — chat + **web search** (grounded citations), embeddings (citation matching), image (receipt card), TTS (audio briefing). Private/uncensored = research anything |
 | **Best Use of 1Shot Relayer** | Author payouts relayed via 1Shot (`.dev` testnet / `.com` mainnet), gas in stablecoins, **EIP-7702** upgrade, **Ed25519 webhook** receiver as the status source |
 
