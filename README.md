@@ -59,7 +59,7 @@ Sebutkan flips that — every citation is an on-chain payment to its author.
 | **Qualification** | User grants an **ERC-7715** periodic-USDC permission via the MetaMask Smart Accounts Kit, in the main flow |
 | **Best x402 + ERC-7710** | The agent pays for paper access **and Venice inference** via **x402**, settled by redeeming the **ERC-7710** delegation |
 | **Best A2A coordination** | The Researcher **redelegates** narrowed slices to a Reader fan-out + Fact-checker + Summarizer; the Fact-checker can **reject** and force a Researcher revision round (real coordination loop). Authority only ever narrows. Contributors earn on-chain ERC-8004 reputation |
-| **Best use of Venice AI** | Four Venice endpoints — chat + **web search** (grounded citations), embeddings (citation matching), image (receipt card), TTS (audio briefing). Private/uncensored = research anything |
+| **Best use of Venice AI** | Five Venice endpoints in the main flow — chat + **web search** (grounded citations), **embeddings** (the Citation-Matcher that weights payouts), image (receipt card), TTS (audio briefing). Private/uncensored = research anything |
 | **Best Use of 1Shot Relayer** | Author payouts relayed via 1Shot (`.dev` testnet / `.com` mainnet), gas in stablecoins, **EIP-7702** upgrade, **Ed25519 webhook** receiver as the status source |
 
 Real on-chain attribution lives at **`/claim`** (sign → operator-relayed NameRegistry bind).
@@ -96,9 +96,9 @@ Next.js app ── /research
 
 ## Status
 
-🚧 In active development during the hackathon. Core delegation layer
-(`src/lib/permissions.ts`, `venice.ts`, `oneshot.ts`, `chains.ts`) is in place and
-type-checked against the live SDK. UI flow, contracts, and 1Shot mainnet relay land next.
+✅ Feature-complete. Six contracts live on Sepolia, a 1Shot 7710+7702 relay executed on Base
+mainnet (`0x6f4c8d53…`), the full agent mesh + x402 + ORCID + share links wired and deployed at
+https://sebutkan.vercel.app. 82 tests green. Remaining: record the demo video (`STORYBOARD.md`).
 
 ## Getting started
 
