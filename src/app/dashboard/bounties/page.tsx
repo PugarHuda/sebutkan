@@ -134,10 +134,11 @@ export default function BountiesPage() {
           </label>
           <button
             onClick={createBounty}
-            disabled={!isConnected || !topic.trim()}
+            disabled={!isConnected || !topic.trim() || delegated}
+            title={delegated ? "This delegated wallet can't sponsor — switch to a plain account" : undefined}
             className="rounded-md bg-[var(--accent)] px-4 py-2.5 text-xs font-medium text-white disabled:opacity-40"
           >
-            Fund bounty
+            {delegated ? "Can't sponsor (delegated wallet)" : "Fund bounty"}
           </button>
         </div>
         {!isConnected ? (
@@ -167,7 +168,17 @@ export default function BountiesPage() {
                 <div className="truncate">
                   <span className="font-mono text-[var(--muted)]">#{b.id}</span>{" "}
                   {b.topic ? (
-                    <span className="font-medium text-[var(--ink)]">{b.topic}</span>
+                    b.settled ? (
+                      <span className="font-medium text-[var(--ink)]">{b.topic}</span>
+                    ) : (
+                      <Link
+                        href={`/dashboard/research?q=${encodeURIComponent(b.topic)}`}
+                        className="font-medium text-[var(--ink)] underline decoration-dotted underline-offset-2 hover:text-[var(--accent)]"
+                        title="Open this topic in Research"
+                      >
+                        {b.topic}
+                      </Link>
+                    )
                   ) : (
                     <span className="font-mono" title={b.topicHash}>{b.topicHash.slice(0, 12)}…</span>
                   )}
@@ -176,7 +187,7 @@ export default function BountiesPage() {
                   <span>by {b.sponsor.slice(0, 6)}…{b.sponsor.slice(-4)}</span>
                   {b.topic && !b.settled ? (
                     <Link href={`/dashboard/research?q=${encodeURIComponent(b.topic)}`} className="font-medium text-[var(--accent)] hover:underline">
-                      Research this →
+                      Open in Research →
                     </Link>
                   ) : null}
                   <a href={`https://sepolia.etherscan.io/tx/${b.txHash}`} target="_blank" rel="noreferrer" className="hover:text-[var(--accent)] hover:underline">

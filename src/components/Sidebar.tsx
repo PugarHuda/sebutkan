@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useAccount, useChainId, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import { pickFlaskConnector } from "@/lib/wagmi";
+import { PERMISSION_CHAIN } from "@/lib/chains";
 
 const NAV_SECTIONS: {
   title: string;
@@ -36,7 +38,16 @@ export function Sidebar() {
   const { address, isConnected } = useAccount();
   const { connectors, connect } = useConnect();
   const { disconnect } = useDisconnect();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
   const flask = pickFlaskConnector(connectors);
+
+  // Strict network: the whole app runs on Sepolia (ERC-7715/7710 live there).
+  // The moment a wallet connects on the wrong chain, prompt a switch.
+  const wrongNetwork = isConnected && chainId !== PERMISSION_CHAIN.id;
+  useEffect(() => {
+    if (wrongNetwork) switchChain?.({ chainId: PERMISSION_CHAIN.id });
+  }, [wrongNetwork, switchChain]);
 
   return (
     <aside className="sticky top-0 flex h-dvh w-60 shrink-0 flex-col border-r border-[var(--rule)] bg-[var(--paper-2)] px-4 py-5">
@@ -87,6 +98,18 @@ export function Sidebar() {
               <div className="font-mono text-[11px]">
                 {address?.slice(0, 6)}…{address?.slice(-4)}
               </div>
+              {wrongNetwork ? (
+                <button
+                  onClick={() => switchChain?.({ chainId: PERMISSION_CHAIN.id })}
+                  className="mt-1.5 w-full rounded-md bg-amber-500 px-2 py-1 text-[10px] font-medium text-white"
+                >
+                  ⚠ Wrong network — switch to Sepolia
+                </button>
+              ) : (
+                <div className="mt-1 flex items-center gap-1 text-[10px] text-emerald-600">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" /> Sepolia
+                </div>
+              )}
               <button onClick={() => disconnect()} className="mt-1 text-[10px] text-[var(--muted)] underline">
                 disconnect
               </button>

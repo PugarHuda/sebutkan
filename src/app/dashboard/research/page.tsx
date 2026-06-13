@@ -140,10 +140,21 @@ export default function ResearchPage() {
     setReceipt({ status: "generating" });
     try {
       const authors = research.result.payouts.map((p) => p.authorName);
+      const total =
+        typeof research.result.recommendedSettleUSDC === "number"
+          ? `${research.result.recommendedSettleUSDC.toFixed(2)} USDC`
+          : "0.50 USDC";
       const res = await fetch("/api/receipt", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ query: research.result.query, authors, totalUSDC: "0.5 USDC" }),
+        // summary = the Summarizer's TL;DR (in the question's language) → the spoken
+        // briefing matches the answer's language; falls back to English server-side.
+        body: JSON.stringify({
+          query: research.result.query,
+          authors,
+          totalUSDC: total,
+          summary: research.result.summary,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
@@ -886,12 +897,45 @@ export default function ResearchPage() {
                       alt="Citation receipt"
                       className="w-full max-w-sm rounded-lg border border-neutral-200 dark:border-neutral-800"
                     />
-                  ) : null}
+                  ) : (
+                    // Designed fallback receipt (English) when Venice image is unavailable —
+                    // a real, presentable card, not just an error line.
+                    <div className="w-full max-w-sm overflow-hidden rounded-lg border border-emerald-300 bg-[var(--paper)] dark:border-emerald-900">
+                      <div className="border-b border-emerald-200 px-5 py-3 dark:border-emerald-900">
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">Sebutkan</p>
+                        <h4 className="serif text-xl font-semibold text-[var(--accent)]">Citations Paid</h4>
+                      </div>
+                      <div className="space-y-2 px-5 py-4 text-xs">
+                        <p className="line-clamp-2 italic text-[var(--ink)]/80">“{research.result.query}”</p>
+                        <div className="flex items-center justify-between border-t border-[var(--rule)] pt-2">
+                          <span className="text-[var(--muted)]">Authors cited</span>
+                          <span className="font-mono font-semibold">{research.result.payouts.length}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[var(--muted)]">Settled</span>
+                          <span className="font-mono font-semibold text-emerald-600">
+                            {typeof research.result.recommendedSettleUSDC === "number"
+                              ? research.result.recommendedSettleUSDC.toFixed(2)
+                              : "0.50"}{" "}
+                            USDC
+                          </span>
+                        </div>
+                        <p className="pt-1 text-[10px] text-[var(--muted)]">Every citation paid its source.</p>
+                      </div>
+                    </div>
+                  )}
                   {receipt.audioBase64 ? (
-                    <audio controls src={`data:audio/mp3;base64,${receipt.audioBase64}`} className="w-full max-w-sm" />
+                    <div>
+                      <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--muted)]">
+                        🔊 Spoken briefing (Venice TTS · matches the answer’s language)
+                      </p>
+                      <audio controls src={`data:audio/mp3;base64,${receipt.audioBase64}`} className="w-full max-w-sm" />
+                    </div>
                   ) : null}
-                  {receipt.degraded ? (
-                    <p className="text-[11px] text-amber-600">Venice receipt unavailable (no credit): {receipt.degraded}</p>
+                  {receipt.degraded && !receipt.audioBase64 ? (
+                    <p className="text-[11px] text-amber-600">
+                      Venice multimodal unavailable (no credit) — showing the local receipt card above.
+                    </p>
                   ) : null}
                 </div>
               ) : null}
