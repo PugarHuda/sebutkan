@@ -19,6 +19,7 @@ export async function POST(req: Request) {
     toYear?: number;
     language?: string;
     rootBudgetUSDC?: number;
+    excludeIds?: string[];
   };
   try {
     body = await req.json();
@@ -40,6 +41,9 @@ export async function POST(req: Request) {
         typeof body.rootBudgetUSDC === "number"
           ? Math.min(1000, Math.max(0, body.rootBudgetUSDC))
           : undefined,
+      excludeIds: Array.isArray(body.excludeIds)
+        ? body.excludeIds.filter((x) => typeof x === "string").slice(0, 200)
+        : undefined,
     });
     return NextResponse.json(result);
   } catch (e) {

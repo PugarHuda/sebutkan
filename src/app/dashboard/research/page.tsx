@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAccount, useConnect, useDisconnect, useWalletClient, useSwitchChain } from "wagmi";
-import { requestBudgetPermission, type BudgetParams } from "@/lib/permissions";
+import { requestBudgetPermission, revokeBudget, type BudgetParams } from "@/lib/permissions";
 import { PERMISSION_CHAIN } from "@/lib/chains";
 import type { ResearchResult } from "@/lib/agent";
 import Link from "next/link";
@@ -84,7 +84,11 @@ export default function ResearchPage() {
   const perDay = Number(perDayInput) || 0;
   const expiryHours = Number(expiryHoursInput) || 0;
   const [grant, setGrant] = useState<GrantState>({ status: "idle" });
+  const [revoke, setRevoke] = useState<{ status: "idle" | "revoking" | "done" | "error"; tx?: string; message?: string }>({
+    status: "idle",
+  });
 
+  const [excludeSeen, setExcludeSeen] = useState(true);
   const [query, setQuery] = useState("");
   const [papers, setPapers] = useState(5);
   const [fromYear, setFromYear] = useState<number | "">("");
@@ -272,6 +276,11 @@ export default function ResearchPage() {
     setRedeem({ status: "idle" });
     setFeedback({ status: "idle" });
     setShare({ status: "idle" });
+    // Skip papers already cited in this device's past runs so each query surfaces
+    // FRESH journals (dedup across runs).
+    const seenIds = excludeSeen
+      ? Array.from(new Set(history.flatMap((h) => (h.result.works ?? []).map((w) => w.id)).filter(Boolean)))
+      : undefined;
     try {
       const res = await fetch("/api/research", {
         method: "POST",
@@ -283,6 +292,7 @@ export default function ResearchPage() {
           toYear: toYear || undefined,
           language,
           rootBudgetUSDC: perDay, // scales the Planner/Reader fan-out depth
+          excludeIds: seenIds,
         }),
       });
       const json = await res.json();
@@ -361,6 +371,28 @@ export default function ResearchPage() {
         "then click Grant again. (It's a wallet-side network setting, not this site.)"
       : lastErr;
     setGrant({ status: "error", message });
+  }
+
+  /** Cancel the active budget on-chain (disableDelegation on the DelegationManager). */
+  async function handleRevoke() {
+    if (grant.status !== "granted" || revoke.status === "revoking") return;
+    setRevoke({ status: "revoking" });
+    const wc = await resolveWalletClient();
+    if (!wc) {
+      setRevoke({ status: "error", message: "Wallet not ready — reconnect MetaMask Flask." });
+      return;
+    }
+    try {
+      const ctx = grant.context as Array<{ delegationManager?: `0x${string}` }> | undefined;
+      const dm = ctx?.[0]?.delegationManager;
+      if (!dm) throw new Error("delegationManager not found in granted context");
+      const tx = await revokeBudget(wc, { permissionContext: grant.context, delegationManager: dm });
+      setRevoke({ status: "done", tx });
+      setGrant({ status: "idle" }); // clears the countdown; budget no longer redeemable
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : String(e);
+      setRevoke({ status: "error", message: /rejected|denied/i.test(raw) ? "You declined the revoke in your wallet." : raw });
+    }
   }
 
   return (
@@ -465,16 +497,52 @@ export default function ResearchPage() {
           </Field>
           <button
             onClick={handleGrant}
-            disabled={!isConnected || onWrongChain || grant.status === "granting"}
+            disabled={!isConnected || onWrongChain || grant.status === "granting" || grant.status === "granted"}
             className="rounded-lg bg-emerald-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-40"
           >
-            {grant.status === "granting" ? "Awaiting signature…" : "Grant budget"}
+            {grant.status === "granting"
+              ? "Awaiting signature…"
+              : grant.status === "granted"
+                ? "✓ Budget granted"
+                : "Grant budget"}
           </button>
           {grant.status === "granted" ? (
-            <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600">✓ permission granted</span>
+            <>
+              <button
+                onClick={handleRevoke}
+                disabled={revoke.status === "revoking"}
+                className="rounded-lg border border-red-300 px-3 py-2.5 text-[11px] font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-950/30"
+              >
+                {revoke.status === "revoking" ? "Revoking…" : "Revoke on-chain"}
+              </button>
+              <button
+                onClick={() => {
+                  setGrant({ status: "idle" });
+                  setRevoke({ status: "idle" });
+                }}
+                className="rounded-lg border border-[var(--rule)] px-3 py-2.5 text-[11px] font-medium hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                Grant new budget
+              </button>
+            </>
           ) : null}
         </div>
         {grant.status === "granted" ? <GrantCountdown expiryUnix={grant.expiryUnix} /> : null}
+        {revoke.status === "done" ? (
+          <p className="mt-2 text-[11px] text-emerald-600">
+            ✓ Budget revoked on-chain —{" "}
+            <a
+              href={`https://sepolia.etherscan.io/tx/${revoke.tx}`}
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              view tx
+            </a>
+            . The agent can no longer spend it.
+          </p>
+        ) : null}
+        {revoke.status === "error" ? <p className="mt-2 text-[11px] text-red-600">{revoke.message}</p> : null}
         {grant.status === "granted" ? (
           <pre className="mt-4 max-h-48 overflow-auto rounded-md bg-neutral-100 p-3 text-[11px] dark:bg-neutral-900">
             {JSON.stringify(grant.context, bigintReplacer, 2)}
@@ -606,6 +674,25 @@ export default function ResearchPage() {
             </select>
           </Field>
         </div>
+
+        {/* Dedup across runs: skip papers already cited on this device. */}
+        <label className="mt-3 flex cursor-pointer items-center gap-2 text-[11px] text-[var(--ink)]/75">
+          <input
+            type="checkbox"
+            checked={excludeSeen}
+            onChange={(e) => setExcludeSeen(e.target.checked)}
+            className="h-3.5 w-3.5 accent-[var(--accent)]"
+          />
+          Skip papers I&apos;ve already researched{" "}
+          {(() => {
+            const n = new Set(history.flatMap((h) => (h.result.works ?? []).map((w) => w.id)).filter(Boolean)).size;
+            return n > 0 ? (
+              <span className="text-[var(--muted)]">— {n} known paper{n === 1 ? "" : "s"} skipped, so each run finds fresh journals</span>
+            ) : (
+              <span className="text-[var(--muted)]">— surfaces fresh journals once you have past runs</span>
+            );
+          })()}
+        </label>
 
         {research.status === "running" ? (
           <ol className="mt-5 space-y-2">

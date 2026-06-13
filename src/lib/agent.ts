@@ -110,6 +110,8 @@ export type ResearchOptions = {
   rootBudgetUSDC?: number;
   /** Root grant expiry (unix) — propagated to per-agent narrowed expiries. */
   rootExpiryUnix?: number;
+  /** OpenAlex work ids already cited in past runs — skipped so each run finds fresh papers. */
+  excludeIds?: string[];
 };
 
 /** Run a full research query and return synthesis + payout plan. */
@@ -122,7 +124,12 @@ export async function runResearch(query: string, opts: ResearchOptions = {}): Pr
   // Turn the (possibly conversational / non-English / typo'd) request into clean
   // academic keywords before hitting OpenAlex — e.g. "carikan skripsi autamtion
   // tools" → "automation tools". This is what makes the search robust for real users.
-  const searchOpts = { limit: papers, fromYear: clampYear(opts.fromYear), toYear: clampYear(opts.toYear) };
+  const searchOpts = {
+    limit: papers,
+    fromYear: clampYear(opts.fromYear),
+    toYear: clampYear(opts.toYear),
+    excludeIds: Array.isArray(opts.excludeIds) ? opts.excludeIds.slice(0, 200) : undefined,
+  };
   const searchTerms = await refineQueryForSearch(query);
   let works = await searchCorpus(searchTerms, searchOpts);
   // Belt-and-braces: if the refined terms found nothing, try the raw query.

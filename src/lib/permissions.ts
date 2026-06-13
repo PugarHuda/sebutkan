@@ -29,6 +29,7 @@ import {
   type GetGrantedExecutionPermissionsResult,
 } from "@metamask/smart-accounts-kit/actions";
 import { getSmartAccountsEnvironment } from "@metamask/smart-accounts-kit";
+import { decodeDelegations, DELEGATION_ABI_TYPE } from "@metamask/smart-accounts-kit/utils";
 import { PERMISSION_CHAIN, USDC, usdc } from "./chains";
 
 export type BudgetParams = {
@@ -136,5 +137,39 @@ export async function redelegateTo(
     environment,
     chainId,
     caveats: args.caveats as never,
+  });
+}
+
+/**
+ * Revoke a granted budget ON-CHAIN: the delegator (user) calls
+ * `disableDelegation` on the DelegationManager for the root delegation decoded
+ * from the granted context. After this the Researcher can no longer redeem the
+ * permission — a real cancel, not just a UI reset. Costs gas (user-paid).
+ */
+const DISABLE_DELEGATION_ABI = [
+  {
+    type: "function",
+    name: "disableDelegation",
+    stateMutability: "nonpayable",
+    inputs: [{ ...DELEGATION_ABI_TYPE, name: "_delegation" }],
+    outputs: [],
+  },
+] as const;
+
+export async function revokeBudget(
+  userWallet: WalletClient,
+  args: { permissionContext: unknown; delegationManager: `0x${string}`; chainId?: number },
+): Promise<`0x${string}`> {
+  const delegations = decodeDelegations(args.permissionContext as never) as unknown[];
+  if (!delegations.length) throw new Error("No delegation found in permission context");
+  const account = userWallet.account;
+  if (!account) throw new Error("Wallet has no account");
+  return userWallet.writeContract({
+    address: args.delegationManager,
+    abi: DISABLE_DELEGATION_ABI,
+    functionName: "disableDelegation",
+    args: [delegations[0] as never],
+    account,
+    chain: userWallet.chain,
   });
 }

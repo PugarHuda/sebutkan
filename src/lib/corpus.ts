@@ -115,6 +115,8 @@ export type CorpusOptions = {
   toYear?: number;
   /** ISO 639-1 language filter (e.g. "en", "id"). Omit to search all languages. */
   language?: string;
+  /** OpenAlex work ids to skip (e.g. already cited in past runs) → surfaces fresh papers. */
+  excludeIds?: string[];
 };
 
 /**
@@ -131,9 +133,12 @@ export function sanitizeQuery(query: string): string {
 
 /** Search OpenAlex and return the top works with authors + abstracts. */
 export async function searchCorpus(query: string, opts: CorpusOptions = {}): Promise<Work[]> {
+  const limit = opts.limit ?? 5;
+  const exclude = new Set((opts.excludeIds ?? []).map((id) => id.toLowerCase()));
   const url = new URL("https://api.openalex.org/works");
   url.searchParams.set("search", sanitizeQuery(query));
-  url.searchParams.set("per_page", String(opts.limit ?? 5));
+  // Over-fetch so we can drop already-seen papers and still return `limit` fresh ones.
+  url.searchParams.set("per_page", String(Math.min(200, limit + exclude.size + 5)));
   url.searchParams.set("sort", "relevance_score:desc");
   url.searchParams.set("mailto", "research@sebutkan.app");
 
@@ -146,7 +151,8 @@ export async function searchCorpus(query: string, opts: CorpusOptions = {}): Pro
   const res = await fetch(url, { headers: { accept: "application/json" } });
   if (!res.ok) throw new Error(`OpenAlex ${res.status}: ${await res.text()}`);
   const json = (await res.json()) as { results?: OpenAlexWork[] };
-  const results = json.results ?? [];
+  // Skip already-seen works (dedup across runs), then keep the top `limit`.
+  const results = (json.results ?? []).filter((w) => !exclude.has((w.id ?? "").toLowerCase())).slice(0, limit);
 
   // Each author's identity = their ORCID (if OpenAlex has one) else OpenAlex id.
   // Resolve wallets from the on-chain NameRegistry (real claimed) with a labeled
