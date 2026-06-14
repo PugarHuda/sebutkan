@@ -233,10 +233,16 @@ export default function ResearchPage() {
   // Surface whether this query was already settled on-chain (re-settle is blocked
   // to prevent double-paying authors) — so the Settle buttons can say so upfront.
   useEffect(() => {
-    if (research.status !== "done" || !publicClient) {
+    if (research.status !== "done") {
       setAlreadyAttested(false);
       return;
     }
+    // Just settled this session → reflect immediately (no need to wait for a read).
+    if (settle.status === "done" || payDirect.status === "done") {
+      setAlreadyAttested(true);
+      return;
+    }
+    if (!publicClient) return;
     const ledger = process.env.NEXT_PUBLIC_ATTRIBUTION_LEDGER as `0x${string}` | undefined;
     if (!ledger) return;
     publicClient
@@ -249,7 +255,7 @@ export default function ResearchPage() {
       .then((v) => setAlreadyAttested(Boolean(v)))
       .catch(() => setAlreadyAttested(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [research.status, publicClient]);
+  }, [research.status, publicClient, settle.status, payDirect.status]);
 
   async function handleRedeem() {
     if (research.status !== "done") return;
@@ -1087,77 +1093,95 @@ export default function ResearchPage() {
                 <p className="mt-4 text-xs text-neutral-400">No authors to pay for this query.</p>
               ) : (
                 <>
-                  {/* Settle: the on-chain RECORD + the single payment. These are not
-                      a double charge — see the note below. */}
-                  <div className="mt-5 flex items-center gap-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">Settle</p>
-                    {alreadyAttested ? (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                        ✓ already settled on-chain — authors paid
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-3">
-                    <button
-                      onClick={handleSettle}
-                      disabled={settle.status === "settling" || alreadyAttested}
-                      title={alreadyAttested ? "This query was already attested on-chain" : undefined}
-                      className="rounded-lg bg-emerald-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-40"
-                    >
-                      {settle.status === "settling"
-                        ? "Recording…"
-                        : alreadyAttested
-                          ? "✓ Attested"
-                          : "① Record attestation (on-chain receipt)"}
-                    </button>
-                    <span className="inline-flex items-center gap-1.5">
-                      <button
-                        onClick={handleRedeem}
-                        disabled={redeem.status === "redeeming" || alreadyAttested}
-                        className="rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-indigo-500 disabled:opacity-40"
-                      >
-                        {redeem.status === "redeeming" ? "Relaying…" : "② Pay authors (gasless · 1Shot) →"}
-                      </button>
-                      <select
-                        value={relayChain}
-                        onChange={(e) => setRelayChain(Number(e.target.value))}
-                        title="Relay chain — Base Sepolia (L2) fees are a fraction of Ethereum Sepolia"
-                        className="rounded-md border border-[var(--rule)] bg-transparent px-1.5 py-2.5 text-[11px]"
-                      >
-                        <option value={sepolia.id}>on Sepolia</option>
-                        <option value={baseSepolia.id}>on Base Sepolia (cheaper fee)</option>
-                      </select>
-                    </span>
-                    <button
-                      onClick={handlePayDirect}
-                      disabled={payDirect.status === "approving" || payDirect.status === "paying" || alreadyAttested}
-                      title="Pay authors straight from your wallet via attestAndSplit — no relayer, no relayer fee (you pay gas in ETH)"
-                      className="rounded-lg border border-indigo-300 px-4 py-2.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-40 dark:border-indigo-800 dark:hover:bg-indigo-950/30"
-                    >
-                      {payDirect.status === "approving"
-                        ? "Approving…"
-                        : payDirect.status === "paying"
-                          ? "Paying…"
-                          : "② alt · Pay directly (no relayer)"}
-                    </button>
-                  </div>
-                  {payDirect.status === "done" ? (
-                    <p className="mt-2 text-[11px] text-emerald-600">
-                      ✓ Authors paid directly on-chain —{" "}
-                      <a href={`https://sepolia.etherscan.io/tx/${payDirect.tx}`} target="_blank" rel="noreferrer" className="underline">
-                        view tx
-                      </a>
-                      .
-                    </p>
-                  ) : null}
-                  {payDirect.status === "error" ? <p className="mt-2 text-[11px] text-red-600">{payDirect.message}</p> : null}
-                  <p className="mt-2 rounded-md bg-[var(--paper)] px-3 py-2 text-[11px] leading-relaxed text-[var(--ink)]/70">
-                    ℹ️ <b>No double payment.</b> ① <b>Records</b> who is owed on-chain (the auditable receipt) — it
-                    doesn’t move money. ② is the <b>one</b> USDC payment — pick <b>either</b> rail: gasless via the
-                    <b> 1Shot</b> relayer, <b>or</b> pay <b>directly</b> from your wallet (no relayer, no relayer
-                    fee). Authors without a wallet yet have their share escrowed to <b>claim</b> later with ORCID —
-                    each author is settled <b>once</b>.
-                  </p>
+                  {(() => {
+                    const paid = payDirect.status === "done" || redeem.status === "done";
+                    const locked = alreadyAttested || paid;
+                    return (
+                      <>
+                        <div className="mt-5 flex items-center gap-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                            Settle — pay the cited authors
+                          </p>
+                          {locked ? (
+                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                              ✓ settled on-chain
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {/* PRIMARY: one click — records the attestation AND pays each author (no relayer fee). */}
+                        <div className="mt-1.5 flex flex-wrap items-center gap-3">
+                          <button
+                            onClick={handlePayDirect}
+                            disabled={payDirect.status === "approving" || payDirect.status === "paying" || locked}
+                            className="rounded-lg bg-emerald-600 px-5 py-2.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-40"
+                          >
+                            {payDirect.status === "approving"
+                              ? "Approving USDC…"
+                              : payDirect.status === "paying"
+                                ? "Paying authors…"
+                                : locked
+                                  ? "✓ Authors settled"
+                                  : "Pay authors — settle on-chain"}
+                          </button>
+                          <span className="text-[11px] text-[var(--muted)]">records + pays in one tx · no relayer fee · you pay gas in ETH</span>
+                        </div>
+                        {payDirect.status === "done" ? (
+                          <p className="mt-2 text-[11px] text-emerald-600">
+                            ✓ Authors paid on-chain —{" "}
+                            <a href={`https://sepolia.etherscan.io/tx/${payDirect.tx}`} target="_blank" rel="noreferrer" className="underline">
+                              view tx
+                            </a>
+                            .
+                          </p>
+                        ) : null}
+                        {payDirect.status === "error" ? <p className="mt-2 text-[11px] text-red-600">{payDirect.message}</p> : null}
+
+                        {/* ADVANCED: gasless relay + record-only, tucked away to keep the main path clear. */}
+                        <details className="mt-2 text-[11px]">
+                          <summary className="cursor-pointer text-[var(--muted)] hover:text-[var(--accent)]">Advanced settlement options</summary>
+                          <div className="mt-2 space-y-2 rounded-md border border-[var(--rule)] bg-[var(--paper)] p-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                onClick={handleRedeem}
+                                disabled={redeem.status === "redeeming" || paid}
+                                className="rounded-md bg-indigo-600 px-3 py-1.5 text-[11px] font-medium text-white transition hover:bg-indigo-500 disabled:opacity-40"
+                              >
+                                {redeem.status === "redeeming" ? "Relaying…" : "Pay gaslessly via 1Shot →"}
+                              </button>
+                              <select
+                                value={relayChain}
+                                onChange={(e) => setRelayChain(Number(e.target.value))}
+                                className="rounded-md border border-[var(--rule)] bg-transparent px-1.5 py-1.5 text-[11px]"
+                              >
+                                <option value={sepolia.id}>on Sepolia</option>
+                                <option value={baseSepolia.id}>on Base Sepolia (cheaper fee)</option>
+                              </select>
+                              <button
+                                onClick={handleSettle}
+                                disabled={settle.status === "settling" || locked}
+                                className="rounded-md border border-[var(--rule)] px-3 py-1.5 text-[11px] font-medium hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"
+                              >
+                                {settle.status === "settling" ? "Recording…" : locked ? "✓ Attested" : "Record-only attestation"}
+                              </button>
+                            </div>
+                            <p className="text-[10px] leading-relaxed text-[var(--muted)]">
+                              <b>1Shot</b> = gasless (relayer pays gas in USDC) but adds a relayer fee — high on Ethereum
+                              Sepolia testnet, tiny on Base Sepolia. <b>Record-only</b> writes the attestation without paying.
+                              {redeem.status === "error" ? <span className="block text-red-600">⚠ {redeem.message}</span> : null}
+                              {settle.status === "error" ? <span className="block text-red-600">⚠ {settle.message}</span> : null}
+                            </p>
+                          </div>
+                        </details>
+
+                        <p className="mt-2 rounded-md bg-[var(--paper)] px-3 py-2 text-[11px] leading-relaxed text-[var(--ink)]/70">
+                          ℹ️ <b>No double payment.</b> The primary button records the on-chain attestation <i>and</i> pays
+                          each author in a single transaction. Authors without a wallet yet have their share escrowed to{" "}
+                          <b>claim</b> later with ORCID — each author is settled <b>once</b>.
+                        </p>
+                      </>
+                    );
+                  })()}
 
                   {/* Export: optional Venice + sharing extras. */}
                   <p className="mt-4 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">Export (optional)</p>
@@ -1239,7 +1263,9 @@ export default function ResearchPage() {
               <div className="mt-4 space-y-3">
                 <DownloadableReceipt
                   result={research.result}
-                  settled={settle.status === "done" || payDirect.status === "done" || redeem.status === "done"}
+                  // "Paid" only after an actual PAYMENT (direct or 1Shot) — the
+                  // record-only attestation (①) doesn't move money to authors.
+                  settled={payDirect.status === "done" || redeem.status === "done"}
                 />
                 {receipt.status === "generating" ? (
                   <p className="text-[11px] text-[var(--muted)]">Generating Venice multimodal extras…</p>
