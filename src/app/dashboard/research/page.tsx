@@ -15,7 +15,8 @@ import { DownloadableReceipt } from "@/components/DownloadableReceipt";
 import { FixSepoliaRpcButton } from "@/components/FixSepoliaRpcButton";
 import { sanitizeDecimal, sanitizeInteger } from "@/lib/format";
 import { saveGrant, loadGrant, clearGrant } from "@/lib/grant-store";
-import { createWalletClient, custom, erc20Abi, type WalletClient } from "viem";
+import { createWalletClient, custom, erc20Abi, type Chain, type WalletClient } from "viem";
+import { sepolia, baseSepolia } from "viem/chains";
 
 type ResearchState =
   | { status: "idle" }
@@ -78,7 +79,7 @@ export default function ResearchPage() {
   const { disconnect } = useDisconnect();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
-  const { switchChain } = useSwitchChain();
+  const { switchChain, switchChainAsync } = useSwitchChain();
 
   // String-backed numeric inputs: a controlled <input type="number"> in React
   // keeps stale leading zeros ("000.1") because the parsed value doesn't change.
@@ -93,6 +94,8 @@ export default function ResearchPage() {
   });
 
   const [excludeSeen, setExcludeSeen] = useState(true);
+  const [autoPay, setAutoPay] = useState(false);
+  const [relayChain, setRelayChain] = useState<number>(PERMISSION_CHAIN.id);
   const [query, setQuery] = useState("");
   const [papers, setPapers] = useState(5);
   const [fromYear, setFromYear] = useState<number | "">("");
@@ -216,19 +219,34 @@ export default function ResearchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [research.status]);
 
+  // Auto-pay: when enabled, settle authors directly the moment research finishes —
+  // honouring the budget you already committed when granting (opt-in, off by default).
+  useEffect(() => {
+    if (research.status === "done" && autoPay && payDirect.status === "idle" && redeem.status === "idle") {
+      handlePayDirect();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [research.status, autoPay]);
+
   async function handleRedeem() {
-    if (research.status !== "done" || chainId === undefined) return;
+    if (research.status !== "done") return;
     if (redeem.status === "redeeming") return; // guard against double-trigger
     setRedeem({ status: "redeeming" });
-    const wc = await resolveWalletClient();
-    if (!wc) {
-      setRedeem({ status: "error", message: "Wallet not ready — reconnect MetaMask Flask." });
-      return;
-    }
+    const relayChainObj: Chain = relayChain === baseSepolia.id ? baseSepolia : sepolia;
     try {
+      // Relaying on a different chain (e.g. Base Sepolia for a far lower fee)?
+      // Switch the wallet to it first so the 7715 grant + relay land there.
+      if (relayChain !== chainId) {
+        await switchChainAsync({ chainId: relayChain as typeof sepolia.id | typeof baseSepolia.id });
+      }
+      const wc = await resolveWalletClient(relayChainObj);
+      if (!wc) {
+        setRedeem({ status: "error", message: "Wallet not ready — reconnect MetaMask Flask." });
+        return;
+      }
       const result = await redeemViaOneShot({
         walletClient: wc,
-        chainId,
+        chainId: relayChain,
         payouts: research.result.payouts,
         workUSDC: research.result.recommendedSettleUSDC ?? 0.5,
       });
@@ -382,15 +400,17 @@ export default function ResearchPage() {
 
   const onWrongChain = isConnected && chainId !== PERMISSION_CHAIN.id;
 
-  async function resolveWalletClient(): Promise<WalletClient | null> {
-    if (walletClient) return walletClient;
+  async function resolveWalletClient(chain: Chain = PERMISSION_CHAIN): Promise<WalletClient | null> {
+    // When a specific chain is requested (e.g. Base Sepolia relay), always build a
+    // client bound to it; otherwise reuse the connected wagmi client.
+    if (chain.id === PERMISSION_CHAIN.id && walletClient) return walletClient;
     // Use the already-connected account (no eth_requestAccounts → no extra popup).
     const eth = (globalThis as { ethereum?: unknown }).ethereum;
     if (!eth || !address) return null;
     try {
       return createWalletClient({
         account: address,
-        chain: PERMISSION_CHAIN,
+        chain,
         transport: custom(eth as Parameters<typeof custom>[0]),
       });
     } catch {
@@ -773,6 +793,18 @@ export default function ResearchPage() {
           })()}
         </label>
 
+        {/* Auto-pay: honour the granted budget — settle authors the moment a run finishes. */}
+        <label className="mt-2 flex cursor-pointer items-center gap-2 text-[11px] text-[var(--ink)]/75">
+          <input
+            type="checkbox"
+            checked={autoPay}
+            onChange={(e) => setAutoPay(e.target.checked)}
+            className="h-3.5 w-3.5 accent-[var(--accent)]"
+          />
+          Auto-pay authors when research finishes{" "}
+          <span className="text-[var(--muted)]">— settles directly on-chain (no relayer) right after each run; honours the budget you already committed</span>
+        </label>
+
         {research.status === "running" ? (
           <ol className="mt-5 space-y-2">
             {RESEARCH_STEPS.map((s, i) => (
@@ -1022,13 +1054,24 @@ export default function ResearchPage() {
                     >
                       {settle.status === "settling" ? "Recording…" : "① Record attestation (on-chain receipt)"}
                     </button>
-                    <button
-                      onClick={handleRedeem}
-                      disabled={redeem.status === "redeeming"}
-                      className="rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-indigo-500 disabled:opacity-40"
-                    >
-                      {redeem.status === "redeeming" ? "Relaying…" : "② Pay authors (gasless · 1Shot) →"}
-                    </button>
+                    <span className="inline-flex items-center gap-1.5">
+                      <button
+                        onClick={handleRedeem}
+                        disabled={redeem.status === "redeeming"}
+                        className="rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-indigo-500 disabled:opacity-40"
+                      >
+                        {redeem.status === "redeeming" ? "Relaying…" : "② Pay authors (gasless · 1Shot) →"}
+                      </button>
+                      <select
+                        value={relayChain}
+                        onChange={(e) => setRelayChain(Number(e.target.value))}
+                        title="Relay chain — Base Sepolia (L2) fees are a fraction of Ethereum Sepolia"
+                        className="rounded-md border border-[var(--rule)] bg-transparent px-1.5 py-2.5 text-[11px]"
+                      >
+                        <option value={sepolia.id}>on Sepolia</option>
+                        <option value={baseSepolia.id}>on Base Sepolia (cheaper fee)</option>
+                      </select>
+                    </span>
                     <button
                       onClick={handlePayDirect}
                       disabled={payDirect.status === "approving" || payDirect.status === "paying"}

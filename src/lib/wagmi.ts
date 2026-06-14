@@ -5,7 +5,7 @@
  * Flask; supporting Snaps are Sepolia-only). Base is where x402 + Venice settle.
  */
 import { createConfig, http, type Connector } from "wagmi";
-import { sepolia, base } from "wagmi/chains";
+import { sepolia, base, baseSepolia } from "wagmi/chains";
 
 // ERC-7715 needs MetaMask **Flask**. With both regular MetaMask and Flask
 // installed, the shared `window.ethereum` is ambiguous — an `injected()` connector
@@ -14,11 +14,12 @@ import { sepolia, base } from "wagmi/chains";
 // connector (rdns), and the UI connects the Flask one specifically. No generic
 // injected connector → no window.ethereum ambiguity.
 export const wagmiConfig = createConfig({
-  chains: [sepolia, base],
+  chains: [sepolia, base, baseSepolia],
   multiInjectedProviderDiscovery: true,
   transports: {
     [sepolia.id]: http(process.env.NEXT_PUBLIC_SEPOLIA_RPC),
     [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC),
+    [baseSepolia.id]: http(process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC),
   },
   ssr: true,
 });
