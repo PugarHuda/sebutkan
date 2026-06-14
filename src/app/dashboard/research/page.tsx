@@ -13,6 +13,7 @@ import { pickFlaskConnector } from "@/lib/wagmi";
 import { DownloadableReceipt } from "@/components/DownloadableReceipt";
 import { FixSepoliaRpcButton } from "@/components/FixSepoliaRpcButton";
 import { sanitizeDecimal, sanitizeInteger } from "@/lib/format";
+import { saveGrant, loadGrant, clearGrant } from "@/lib/grant-store";
 import { createWalletClient, custom, type WalletClient } from "viem";
 
 type ResearchState =
@@ -147,6 +148,15 @@ export default function ResearchPage() {
     if (q) setQuery(q);
   }, []);
 
+  // Restore an active (unexpired) grant after navigation/refresh — the on-chain
+  // permission persists; this re-surfaces its banner + countdown.
+  useEffect(() => {
+    if (grant.status !== "idle") return;
+    const g = loadGrant(address);
+    if (g) setGrant({ status: "granted", context: g.context, expiryUnix: g.expiryUnix, capUSDC: g.capUSDC });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address]);
+
   async function handleReceipt() {
     if (research.status !== "done") return;
     setReceipt({ status: "generating" });
@@ -166,6 +176,7 @@ export default function ResearchPage() {
           authors,
           totalUSDC: total,
           summary: research.result.summary,
+          language, // picks a native Venice TTS voice for the spoken briefing
         }),
       });
       const json = await res.json();
@@ -356,6 +367,8 @@ export default function ResearchPage() {
         }
         const granted = await requestBudgetPermission(wc, params);
         setGrant({ status: "granted", context: granted, expiryUnix: params.expiry, capUSDC: params.perPeriodUSDC });
+        // Persist so the active budget survives navigation / refresh.
+        if (address) saveGrant({ wallet: address, context: granted, expiryUnix: params.expiry, capUSDC: params.perPeriodUSDC });
         return;
       } catch (e) {
         lastErr = e instanceof Error ? e.message : String(e);
@@ -390,6 +403,7 @@ export default function ResearchPage() {
       const tx = await revokeBudget(wc, { permissionContext: grant.context, delegationManager: dm });
       setRevoke({ status: "done", tx });
       setGrant({ status: "idle" }); // clears the countdown; budget no longer redeemable
+      clearGrant();
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
       setRevoke({ status: "error", message: /rejected|denied/i.test(raw) ? "You declined the revoke in your wallet." : raw });
@@ -520,6 +534,7 @@ export default function ResearchPage() {
                 onClick={() => {
                   setGrant({ status: "idle" });
                   setRevoke({ status: "idle" });
+                  clearGrant();
                 }}
                 className="rounded-lg border border-[var(--rule)] px-3 py-2.5 text-[11px] font-medium hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
@@ -931,34 +946,48 @@ export default function ResearchPage() {
                 <p className="mt-4 text-xs text-neutral-400">No authors to pay for this query.</p>
               ) : (
                 <>
-                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                  {/* Settle: the on-chain RECORD + the single payment. These are not
+                      a double charge — see the note below. */}
+                  <p className="mt-5 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">Settle</p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-3">
                     <button
                       onClick={handleSettle}
                       disabled={settle.status === "settling"}
                       className="rounded-lg bg-emerald-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-40"
                     >
-                      {settle.status === "settling" ? "Recording…" : "1 · Record attestation on-chain"}
+                      {settle.status === "settling" ? "Recording…" : "① Record attestation (on-chain receipt)"}
                     </button>
                     <button
                       onClick={handleRedeem}
                       disabled={redeem.status === "redeeming"}
                       className="rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-indigo-500 disabled:opacity-40"
                     >
-                      {redeem.status === "redeeming" ? "Relaying…" : "2 · Pay authors gasless (1Shot) →"}
+                      {redeem.status === "redeeming" ? "Relaying…" : "② Pay authors now (gasless · 1Shot) →"}
                     </button>
+                  </div>
+                  <p className="mt-2 rounded-md bg-[var(--paper)] px-3 py-2 text-[11px] leading-relaxed text-[var(--ink)]/70">
+                    ℹ️ <b>No double payment.</b> ① <b>Records</b> who is owed on-chain (the auditable receipt) — it
+                    doesn’t move money to wallets. ② is the <b>one</b> USDC payment, relayed gasless by 1Shot.
+                    Authors without a wallet yet have their share held in escrow to <b>claim</b> later with ORCID —
+                    each author is settled <b>once</b>, never twice.
+                  </p>
+
+                  {/* Export: optional Venice + sharing extras. */}
+                  <p className="mt-4 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">Export (optional)</p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-3">
                     <button
                       onClick={handleReceipt}
                       disabled={receipt.status === "generating"}
                       className="rounded-lg border border-neutral-300 px-4 py-2.5 text-xs font-medium transition hover:bg-neutral-50 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-800"
                     >
-                      {receipt.status === "generating" ? "Generating…" : "3 · Venice receipt (image + audio)"}
+                      {receipt.status === "generating" ? "Generating…" : "Venice receipt (image + audio)"}
                     </button>
                     <button
                       onClick={handleShare}
                       disabled={share.status === "sharing"}
                       className="rounded-lg border border-[var(--accent)] px-4 py-2.5 text-xs font-medium text-[var(--accent)] transition hover:bg-[var(--accent-soft)] disabled:opacity-40"
                     >
-                      {share.status === "sharing" ? "Creating link…" : "4 · Share public link ↗"}
+                      {share.status === "sharing" ? "Creating link…" : "Share public link ↗"}
                     </button>
                   </div>
 
@@ -975,9 +1004,6 @@ export default function ResearchPage() {
                       Share unavailable: {share.message}
                     </p>
                   ) : null}
-                  <p className="mt-2 text-[11px] text-neutral-400">
-                    record a real on-chain attestation · relay USDC splits gasless via 1Shot · generate a Venice receipt card + audio briefing
-                  </p>
                 </>
               )}
 

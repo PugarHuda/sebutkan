@@ -17,8 +17,27 @@ type Body = {
   totalUSDC?: string;
   /** The Summarizer's TL;DR — already in the question's language; spoken verbatim. */
   summary?: string;
+  /** Answer language → picks a native Venice TTS voice for a natural read. */
+  language?: string;
   want?: ("image" | "audio")[];
 };
+
+/**
+ * Map the answer language to a native tts-kokoro voice so the spoken briefing
+ * sounds natural in that language. Languages kokoro has no native voice for
+ * (e.g. Indonesian, Arabic) fall back to the default English voice.
+ */
+function voiceForLanguage(language?: string): string {
+  const l = (language ?? "").toLowerCase();
+  if (l.includes("spanish") || l.includes("español")) return "ef_dora";
+  if (l.includes("french") || l.includes("français")) return "ff_siwis";
+  if (l.includes("japanese") || l.includes("日本")) return "jf_alpha";
+  if (l.includes("chinese") || l.includes("mandarin") || l.includes("中文")) return "zf_xiaoxiao";
+  if (l.includes("hindi")) return "hf_alpha";
+  if (l.includes("italian") || l.includes("italiano")) return "if_sara";
+  if (l.includes("portuguese") || l.includes("português")) return "pf_dora";
+  return "af_sky"; // English + any unsupported language (Indonesian, Arabic, auto)
+}
 
 export async function POST(req: Request) {
   let body: Body;
@@ -55,7 +74,15 @@ export async function POST(req: Request) {
       const briefing =
         body.summary?.trim() ||
         `Research complete. ${total} was split across ${authorCount} cited ${authorCount === 1 ? "author" : "authors"}. Every citation paid its source.`;
-      const buf = await veniceSpeech(briefing);
+      const voice = voiceForLanguage(body.language);
+      // Try the language-native voice; if the model rejects it, fall back to the
+      // default so audio never breaks.
+      let buf: ArrayBuffer;
+      try {
+        buf = await veniceSpeech(briefing, voice);
+      } catch {
+        buf = await veniceSpeech(briefing);
+      }
       out.audioBase64 = Buffer.from(buf).toString("base64");
     }
     return NextResponse.json(out);
