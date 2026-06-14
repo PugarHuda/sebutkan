@@ -34,7 +34,7 @@ a real on-chain attestation of every citation and an A2A mesh of redelegated spe
 
 **1Shot mainnet relay (Base 8453):** tx [`0x6f4c8d539f9ea34f7e6e0d0730e4ae04fec1d986e5d0641b8b36ab00c6e8480c`](https://basescan.org/tx/0x6f4c8d539f9ea34f7e6e0d0730e4ae04fec1d986e5d0641b8b36ab00c6e8480c) — type `0x4` (EIP-7702 SetCode), relayed by the 1Shot permissionless relayer, gas paid in USDC.
 
-**73 tests** (32 Foundry + 41 Vitest), all green. No mocks in the critical path.
+**112 tests** (37 Foundry + 75 Vitest), all green. No mocks in the critical path.
 
 ---
 
@@ -53,7 +53,7 @@ The Researcher **redelegates** strictly narrower budgets (ERC-7710) to each spec
 Venice is the agent's brain across **five endpoints in the main flow**: chat, **web search** (grounded citations), **embeddings** (the Citation-Matcher that weights payouts), **image** (citation-receipt card), and **TTS** (audio briefing). Private + uncensored = research anything. Qualifies via the three main tracks above.
 
 ### Best Use of 1Shot Permissionless Relayer — $1,000 USDC
-We relay a **7710 transaction through the 1Shot mainnet relayer** with an **EIP-7702 authorization** upgrading the EOA to a smart account — gas paid in USDC. Proof: Base tx `0x6f4c8d53…` (type 0x4). We also built an **x402 7710 facilitator on top of the public relayer** (the track's suggested bonus direction) and wired the **Ed25519 webhook** receiver as the status source.
+We relay a **7710 transaction through the 1Shot mainnet relayer** with an **EIP-7702 authorization** upgrading the EOA to a smart account — gas paid in USDC. Proof: Base tx `0x6f4c8d53…` (type 0x4), reproducible via `node scripts/relay-mainnet-1shot.mjs`. We also built an **x402 7710 facilitator on top of the public relayer** (the track's suggested bonus direction) and wired the **Ed25519 webhook** receiver as the status source. (In-browser the app reads the live relayer `getCapabilities`/`getFeeData`; the actual gasless relay is shown via the script, because MetaMask Flask doesn't expose the 7710 relay-permission method on testnet — so the in-app settle uses the atomic `attestAndSplit` path, and 1Shot is demonstrated on mainnet where it's proven.)
 
 ### Best Social Media presence — $100 × 5
 See `SOCIAL.md` — posts tagging **@MetaMaskDev** that lead with the one-permission UX story (how ERC-7715 Advanced Permissions streamlined getting spending authority from the user). _Post + attach a clip._

@@ -128,7 +128,7 @@ export default function ClaimPage() {
         <span className="italic"> your real wallet</span>. You pay no gas.
       </p>
 
-      <div className="card mt-8 space-y-5 p-6">
+      <div data-tour="claim-card" className="card mt-8 space-y-5 p-6">
         {/* 1. connect wallet */}
         <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">1 · Connect wallet</p>
         {!isConnected ? (

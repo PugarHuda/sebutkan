@@ -61,7 +61,7 @@ export default function ActivityPage() {
 
       {/* Leaderboard */}
       {board.length > 0 ? (
-        <section className="mt-8">
+        <section data-tour="act-leaderboard" className="mt-8">
           <h2 className="serif text-lg font-semibold">Top cited authors</h2>
           <div className="mt-2 space-y-px overflow-hidden rounded-md border border-[var(--rule)] bg-[var(--rule)]">
             {board.map((a, i) => (
@@ -83,7 +83,7 @@ export default function ActivityPage() {
         </section>
       ) : null}
 
-      <h2 className="serif mt-10 text-lg font-semibold">Recent attestations</h2>
+      <h2 data-tour="act-recent" className="serif mt-10 text-lg font-semibold">Recent attestations</h2>
       <div className="mt-2 space-y-px overflow-hidden rounded-md border border-[var(--rule)] bg-[var(--rule)]">
         {events === null ? (
           <div className="bg-[var(--paper-2)] p-6 text-sm text-[var(--muted)]">Loading…</div>

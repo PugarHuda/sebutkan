@@ -36,7 +36,7 @@ export default function Overview() {
       </p>
 
       {/* Stat tiles */}
-      <div className="mt-7 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[var(--rule)] bg-[var(--rule)] sm:grid-cols-4">
+      <div data-tour="ov-stats" className="mt-7 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[var(--rule)] bg-[var(--rule)] sm:grid-cols-4">
         {stats.map((s) => (
           <div key={s.k} className="bg-[var(--paper-2)] p-5">
             <div className="serif text-3xl font-semibold text-[var(--accent)]">{s.v}</div>
@@ -46,7 +46,7 @@ export default function Overview() {
       </div>
 
       {/* Quick actions */}
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
+      <div data-tour="ov-actions" className="mt-8 grid gap-4 sm:grid-cols-3">
         {[
           { href: "/dashboard/research", t: "Run a query", d: "Grant a budget, research, and pay authors.", g: "❝" },
           { href: "/dashboard/activity", t: "View activity", d: "On-chain attestations + author leaderboard.", g: "≣" },
@@ -65,7 +65,7 @@ export default function Overview() {
       </div>
 
       {/* Recent attestations */}
-      <div className="mt-10">
+      <div data-tour="ov-recent" className="mt-10">
         <div className="flex items-center justify-between">
           <h2 className="serif text-lg font-semibold">Recent attestations</h2>
           <Link href="/dashboard/activity" className="text-xs text-[var(--accent)] hover:underline">

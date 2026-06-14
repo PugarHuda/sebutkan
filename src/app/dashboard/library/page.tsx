@@ -6,9 +6,13 @@ import { loadHistory, removeFromHistory, clearHistory, type HistoryEntry } from 
 
 const stripTags = (s: string) => s.replace(/<[^>]+>/g, "");
 
+type ConfFilter = "all" | "high" | "medium" | "low";
+
 export default function LibraryPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [ready, setReady] = useState(false);
+  const [search, setSearch] = useState("");
+  const [conf, setConf] = useState<ConfFilter>("all");
 
   useEffect(() => {
     setHistory(loadHistory());
@@ -20,6 +24,22 @@ export default function LibraryPage() {
   const totalJournals = history.reduce((n, h) => n + (h.result.works?.length ?? 0), 0);
   const uniqueAuthors = new Set<string>();
   history.forEach((h) => h.result.payouts?.forEach((p) => uniqueAuthors.add(p.identity || p.authorName)));
+
+  // Search (query + answer text + cited journal titles) and confidence filter.
+  const q = search.trim().toLowerCase();
+  const filtered = history.filter((h) => {
+    if (conf !== "all" && (h.result.confidence ?? "").toLowerCase() !== conf) return false;
+    if (!q) return true;
+    const hay = [
+      h.query,
+      h.result.summary,
+      h.result.synthesis,
+      ...(h.result.works?.map((w) => w.title) ?? []),
+    ]
+      .join(" ")
+      .toLowerCase();
+    return hay.includes(q);
+  });
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
@@ -59,8 +79,45 @@ export default function LibraryPage() {
         </div>
       ) : null}
 
+      {/* Search + confidence filter */}
+      {totalRuns > 0 ? (
+        <div className="mt-7 flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[200px] flex-1">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted)]">🔎</span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search query, answer, or cited journal…"
+              className="w-full rounded-md border border-[var(--rule)] bg-transparent py-2 pl-9 pr-8 text-sm outline-none focus:border-[var(--accent)]"
+            />
+            {search ? (
+              <button
+                onClick={() => setSearch("")}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)] hover:text-[var(--ink)]"
+              >
+                ✕
+              </button>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-1 rounded-md border border-[var(--rule)] p-0.5">
+            {(["all", "high", "medium", "low"] as ConfFilter[]).map((c) => (
+              <button
+                key={c}
+                onClick={() => setConf(c)}
+                className={`rounded px-2.5 py-1 text-[11px] font-medium capitalize transition ${
+                  conf === c ? "bg-[var(--accent)] text-white" : "text-[var(--muted)] hover:text-[var(--ink)]"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {/* Entries */}
-      <div className="mt-8 space-y-3">
+      <div data-tour="lib-list" className="mt-4 space-y-3">
         {!ready ? (
           <div className="card p-6 text-sm text-[var(--muted)]">Loading…</div>
         ) : totalRuns === 0 ? (
@@ -73,8 +130,12 @@ export default function LibraryPage() {
               Run your first query →
             </Link>
           </div>
+        ) : filtered.length === 0 ? (
+          <div className="card p-8 text-center text-sm text-[var(--muted)]">
+            No runs match “{search}”{conf !== "all" ? ` · ${conf} confidence` : ""}.
+          </div>
         ) : (
-          history.map((h) => {
+          filtered.map((h) => {
             const works = h.result.works ?? [];
             const authors = h.result.payouts?.length ?? 0;
             const snippet = stripTags(h.result.summary || h.result.synthesis || "").slice(0, 200);

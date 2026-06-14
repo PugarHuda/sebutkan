@@ -26,17 +26,46 @@ function pickVoice(): SpeechSynthesisVoice | null {
 
 type Step = { href: string; selector: string; title: string; narration: string };
 
-/** A guided tour of EVERY sidebar section — navigates page to page (interactive,
- *  like clicking the nav), spotlights the section with a visible pointer, and
- *  narrates it. Start it with `window.dispatchEvent(new Event("sebutkan:start-tour"))`. */
+/** A detailed guided tour of EVERY sidebar section AND what's inside each page.
+ *  It navigates page to page (interactive, like clicking the nav), spotlights the
+ *  sidebar item, then walks the key parts of that page one by one with a visible
+ *  pointer + spoken narration. Start it with
+ *  `window.dispatchEvent(new Event("sebutkan:start-tour"))`. */
 const STEPS: Step[] = [
-  { href: "/dashboard", selector: 'aside a[href="/dashboard"]', title: "Overview", narration: "Welcome to Sebutkan — the research agent that cites and pays its sources. This is the Overview: live on-chain stats — attestations recorded, U.S.D.C. attributed to authors, and how many authors have been cited. All read straight from Sepolia." },
-  { href: "/dashboard/research", selector: 'aside a[href="/dashboard/research"]', title: "Research", narration: "Research is the heart of it. You grant one scoped budget, ask a question, and a mesh of A.I. agents answers it with Venice — then splits U.S.D.C. back to every author it cites. We'll come back here for the full flow." },
-  { href: "/dashboard/library", selector: 'aside a[href="/dashboard/library"]', title: "Library", narration: "Every finished run is saved in your Library — the full synthesis, the agent trace, the cited journals, and the payout plan. You can re-open or share any of them, no re-paying." },
-  { href: "/dashboard/agents", selector: 'aside a[href="/dashboard/agents"]', title: "Agents", narration: "Here's the agent mesh: five specialists — a Researcher, Planner, Reader, Fact-checker, and Summarizer. Each is a real on-chain principal in the E.R.C. eighty-oh-four registry, and earns reputation as it works." },
-  { href: "/dashboard/bounties", selector: 'aside a[href="/dashboard/bounties"]', title: "Bounties", narration: "Anyone can sponsor a research topic with U.S.D.C. When Sebutkan satisfies it, the deposit is paid to the cited authors — with no platform fee. Unsettled bounties are refundable." },
-  { href: "/dashboard/claim", selector: 'aside a[href="/dashboard/claim"]', title: "Claim earnings", narration: "This is where authors get paid. They prove their ORCID, bind their wallet with one signature, and withdraw their earnings — plus a twelve-percent citation-loyalty yield that ticks up live while it waits." },
-  { href: "/dashboard/activity", selector: 'aside a[href="/dashboard/activity"]', title: "Activity", narration: "And it's all public. Activity is a live read of every attestation and payment on-chain, with a leaderboard of the most-cited authors. That's Sebutkan — every citation, a real payment." },
+  // ── Overview ──
+  { href: "/dashboard", selector: 'aside a[href="/dashboard"]', title: "Overview", narration: "Welcome to Sebutkan — the research agent that cites and pays its sources. Let's walk the whole product. We start on Overview." },
+  { href: "/dashboard", selector: '[data-tour="ov-stats"]', title: "Overview · live stats", narration: "These four tiles are live on-chain reads from Sepolia: how many attestations were recorded, how many author payouts went out, the total U.S.D.C. attributed to authors, and how many distinct authors have been cited. Nothing here is hard-coded." },
+  { href: "/dashboard", selector: '[data-tour="ov-actions"]', title: "Overview · quick actions", narration: "Below that are quick actions — jump straight into running a query, viewing on-chain activity, or claiming rewards as an author." },
+  { href: "/dashboard", selector: '[data-tour="ov-recent"]', title: "Overview · recent attestations", narration: "And the latest attestations, newest first. Each row links to the real transaction on Etherscan — the citation, and the payment, are the same on-chain record." },
+
+  // ── Research ──
+  { href: "/dashboard/research", selector: 'aside a[href="/dashboard/research"]', title: "Research", narration: "Research is the heart of it — where you grant a budget, ask a question, and the agents answer and pay. Let's look at the pieces." },
+  { href: "/dashboard/research", selector: '[data-tour="stepper"]', title: "Research · the three steps", narration: "The flow is three steps: grant a budget, run the research, then settle and pay the authors. This stepper tracks where you are." },
+  { href: "/dashboard/research", selector: '[data-tour="budget"]', title: "Research · grant a budget", narration: "Step one — you sign one E.R.C. seventy-seven-fifteen Advanced Permission: a scoped U.S.D.C. budget the agent can never exceed. Nothing leaves your wallet; it's a cap, with a live countdown until it expires. A custodial lock-upfront mode is offered as an opt-in." },
+  { href: "/dashboard/research", selector: '[data-tour="mesh"]', title: "Research · the agent mesh", narration: "The Researcher then redelegates strictly narrower slices of that budget to each specialist — authority only ever shrinks. That's real agent-to-agent coordination over E.R.C. seventy-seven-ten." },
+  { href: "/dashboard/research", selector: '[data-tour="ask"]', title: "Research · ask anything", narration: "Step two — ask your question. You pick how many papers, an optional year range, and the answer language. There's even auto-pay, which settles the authors on-chain the moment a run finishes. After a run, hit Explain this result for a deeper step-by-step tour of the answer." },
+
+  // ── Library ──
+  { href: "/dashboard/library", selector: 'aside a[href="/dashboard/library"]', title: "Library", narration: "Every finished run is saved in your Library." },
+  { href: "/dashboard/library", selector: '[data-tour="lib-list"]', title: "Library · your runs", narration: "Each card keeps the full synthesis, the agent trace, the cited journals, and the payout plan — re-openable without re-paying. Use the search box and confidence filter at the top to find any past run instantly. The on-chain attestation stays the canonical paid record." },
+
+  // ── Agents ──
+  { href: "/dashboard/agents", selector: 'aside a[href="/dashboard/agents"]', title: "Agents", narration: "The Agents page shows the mesh itself." },
+  { href: "/dashboard/agents", selector: '[data-tour="agents-list"]', title: "Agents · five specialists", narration: "Five specialists — Researcher, Planner, Reader, Fact-checker, and Summarizer. Each shows its maximum budget fraction, the Venice model it reasons with, and a live reputation score it earns on-chain in the E.R.C. eighty-oh-four registry as it works." },
+
+  // ── Bounties ──
+  { href: "/dashboard/bounties", selector: 'aside a[href="/dashboard/bounties"]', title: "Bounties", narration: "Bounties let anyone fund a research topic." },
+  { href: "/dashboard/bounties", selector: '[data-tour="bounty-form"]', title: "Bounties · sponsor a topic", narration: "Type a topic, set a U.S.D.C. amount, and fund it. When Sebutkan satisfies it, that deposit is paid straight to the cited authors — with no platform fee." },
+  { href: "/dashboard/bounties", selector: '[data-tour="bounty-list"]', title: "Bounties · open & settled", narration: "Here are the open and settled bounties, read from the BountyMarket contract. Anything still unsettled is refundable after seven days." },
+
+  // ── Claim earnings ──
+  { href: "/dashboard/claim", selector: 'aside a[href="/dashboard/claim"]', title: "Claim earnings", narration: "Claim earnings is where authors get paid." },
+  { href: "/dashboard/claim", selector: '[data-tour="claim-card"]', title: "Claim · prove, bind, withdraw", narration: "An author connects their wallet, proves their ORCID by OAuth, and binds the two with a single signature — the operator relays the on-chain link. Their owed balance grows every time they're cited, and earns a twelve-percent citation-loyalty yield that ticks up live until they withdraw." },
+
+  // ── Activity ──
+  { href: "/dashboard/activity", selector: 'aside a[href="/dashboard/activity"]', title: "Activity", narration: "Finally, Activity — everything in the open." },
+  { href: "/dashboard/activity", selector: '[data-tour="act-leaderboard"]', title: "Activity · leaderboard", narration: "A leaderboard of the most-cited authors, ranked by U.S.D.C. earned — each links to that author's profile." },
+  { href: "/dashboard/activity", selector: '[data-tour="act-recent"]', title: "Activity · on-chain proof", narration: "And a live feed of every attestation on-chain. That's the whole loop: Sebutkan researches, cites, and pays — every citation a real payment. Thanks for taking the tour." },
 ];
 
 export function DashboardTour() {
@@ -147,13 +176,23 @@ export function DashboardTour() {
               boxShadow: "0 0 0 9999px rgba(0,0,0,0.55)",
             }}
           />
-          {/* Visible animated pointer (a finger) at the right edge of the item. */}
-          <div
-            className="pointer-events-none absolute animate-bounce text-2xl"
-            style={{ top: rect.top + rect.height / 2 - 14, left: rect.left + rect.width + 6 }}
-          >
-            👉
-          </div>
+          {/* Visible animated pointer: from the right for the narrow sidebar item,
+              from the top-left corner for wider in-page content blocks. */}
+          {rect.left < 248 ? (
+            <div
+              className="pointer-events-none absolute animate-bounce text-2xl"
+              style={{ top: rect.top + rect.height / 2 - 14, left: rect.left + rect.width + 6 }}
+            >
+              👉
+            </div>
+          ) : (
+            <div
+              className="pointer-events-none absolute animate-bounce text-2xl"
+              style={{ top: rect.top - 30, left: rect.left - 4 }}
+            >
+              👇
+            </div>
+          )}
         </>
       ) : (
         <div className="absolute inset-0 bg-black/50" />

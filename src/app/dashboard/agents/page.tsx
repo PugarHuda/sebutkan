@@ -35,7 +35,7 @@ export default function AgentsPage() {
         registry.
       </p>
 
-      <div className="mt-7 space-y-px overflow-hidden rounded-lg border border-[var(--rule)] bg-[var(--rule)]">
+      <div data-tour="agents-list" className="mt-7 space-y-px overflow-hidden rounded-lg border border-[var(--rule)] bg-[var(--rule)]">
         {agents.map((a) => {
           const r = rep[a.id];
           return (

@@ -109,7 +109,7 @@ export default function BountiesPage() {
       </p>
 
       {/* Create */}
-      <div className="card mt-7 p-5">
+      <div data-tour="bounty-form" className="card mt-7 p-5">
         <h2 className="serif text-lg font-semibold">Sponsor a topic</h2>
         <div className="mt-3 flex flex-wrap items-end gap-3">
           <label className="flex-1 text-xs">
@@ -155,7 +155,7 @@ export default function BountiesPage() {
       </div>
 
       {/* List */}
-      <h2 className="serif mt-9 text-lg font-semibold">Open & settled bounties</h2>
+      <h2 data-tour="bounty-list" className="serif mt-9 text-lg font-semibold">Open & settled bounties</h2>
       <div className="mt-2 space-y-px overflow-hidden rounded-lg border border-[var(--rule)] bg-[var(--rule)]">
         {bounties.length === 0 ? (
           <div className="bg-[var(--paper-2)] p-5 text-sm text-[var(--muted)]">
