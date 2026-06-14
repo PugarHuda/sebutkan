@@ -1120,18 +1120,38 @@ export default function ResearchPage() {
                 ○ x402 skipped (agent unfunded)
               </span>
             )}
-            {/* Spend vs cap — the grant is a daily CEILING, not an up-front charge.
-                Makes it unambiguous that research spends a tiny per-run micropayment
-                (or 0 when unfunded), never the whole daily budget. */}
-            <p className="text-[11px] text-[var(--muted)]">
-              💸 Agent spend this run:{" "}
-              <span className="font-medium text-[var(--ink)]">
-                {(research.result.x402?.paid ? Number(research.result.x402.amountUSDC) : 0).toFixed(2)} USDC
-              </span>{" "}
-              of your <span className="font-medium text-[var(--ink)]">{perDay.toFixed(2)} USDC/day</span> limit
-              {" "}— the grant is a <span className="font-medium">ceiling</span>, never charged up-front. Unused budget stays in your wallet (≈{" "}
-              {Math.max(0, Math.floor(perDay / 0.01))} more runs today at 0.01 USDC each).
-            </p>
+            {/* Budget CAP (granted ceiling) vs USED (this run's x402 micropayment). */}
+            {(() => {
+              const used = research.result.x402?.paid ? Number(research.result.x402.amountUSDC) : 0;
+              const cap = grant.status === "granted" ? grant.capUSDC : null;
+              return (
+                <div className="rounded-md border border-[var(--rule)] bg-[var(--paper)] p-2.5 text-[11px]">
+                  {cap !== null ? (
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+                      <span>
+                        💰 Budget cap:{" "}
+                        <b className="text-[var(--ink)]">{cap.toFixed(2)} USDC/day</b>{" "}
+                        <span className="text-[var(--muted)]">(granted ceiling)</span>
+                      </span>
+                      <span>
+                        💸 Used this run:{" "}
+                        <b className="text-[var(--ink)]">{used.toFixed(2)} USDC</b>{" "}
+                        <span className="text-[var(--muted)]">
+                          {research.result.x402?.paid ? "(x402 paper)" : "(agent unfunded — x402 skipped)"}
+                        </span>
+                      </span>
+                      <span className="text-[var(--muted)]">≈ {Math.max(0, Math.floor(cap / 0.01))} runs left within the cap · unused stays in your wallet</span>
+                    </div>
+                  ) : (
+                    <span className="text-[var(--muted)]">
+                      💸 <b className="text-[var(--ink)]">No active budget</b> — the agent ran <b>unfunded</b>, so it skipped the
+                      x402 paper purchase (read free metadata only). <b>Grant a budget above</b> to let the agent buy papers
+                      (~0.01 USDC/run, within your cap).
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
             {prefund && prefundState.status !== "idle" ? (
               <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
                 🔒 <b>Upfront pool (Kutip-style):</b>{" "}
