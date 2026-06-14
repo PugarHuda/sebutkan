@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * Pitch deck — Sebutkan (/slide)
@@ -279,22 +279,60 @@ export default function SlideDeck() {
   const [i, setI] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [captions, setCaptions] = useState(true);
+  const [voiceList, setVoiceList] = useState<SpeechSynthesisVoice[]>([]);
+  const [voiceURI, setVoiceURI] = useState("");
+  const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
   const n = SLIDES.length;
+
+  // Load voices and auto-pick the most natural English one (Google/Neural > others).
+  useEffect(() => {
+    const synth = typeof window !== "undefined" ? window.speechSynthesis : undefined;
+    if (!synth) return;
+    const load = () => {
+      const vs = synth.getVoices();
+      if (!vs.length) return;
+      const rank = (v: SpeechSynthesisVoice) => {
+        const nm = v.name.toLowerCase();
+        let s = 0;
+        if (/google/.test(nm)) s += 6;
+        if (/natural|neural|premium|enhanced|online/.test(nm)) s += 5;
+        if (/(aria|jenny|guy|sonia|ryan|libby|emma|ava|samantha|daniel)/.test(nm)) s += 3;
+        if (/microsoft/.test(nm)) s += 2;
+        if (/en[-_]us/i.test(v.lang)) s += 2;
+        else if (/^en/i.test(v.lang)) s += 1;
+        return s;
+      };
+      const en = vs.filter((v) => /^en/i.test(v.lang)).sort((a, b) => rank(b) - rank(a));
+      const list = en.length ? en : vs;
+      setVoiceList(list);
+      const best = list[0];
+      if (best && !voiceRef.current) {
+        voiceRef.current = best;
+        setVoiceURI(best.voiceURI);
+      }
+    };
+    load();
+    synth.addEventListener("voiceschanged", load);
+    return () => synth.removeEventListener("voiceschanged", load);
+  }, []);
   const go = useCallback((d: number) => setI((x) => Math.max(0, Math.min(n - 1, x + d))), [n]);
 
   // Narrated playback: speak each slide's narration (browser TTS) + auto-advance.
+  // A ref breaks the recursive self-reference (avoids a TDZ on `playFrom`).
+  const playFromRef = useRef<(idx: number) => void>(() => {});
   const playFrom = useCallback(
     (idx: number) => {
       const synth = typeof window !== "undefined" ? window.speechSynthesis : undefined;
       if (!synth) return;
       synth.cancel();
       const u = new SpeechSynthesisUtterance(NARRATION[SLIDES[idx].id] ?? "");
-      u.rate = 1.0;
+      u.rate = 0.98;
       u.pitch = 1.0;
+      if (voiceRef.current) u.voice = voiceRef.current;
       u.onend = () => {
         if (idx < n - 1) {
           setI(idx + 1);
-          setTimeout(() => playFrom(idx + 1), 450);
+          setTimeout(() => playFromRef.current(idx + 1), 450);
         } else {
           setPlaying(false);
         }
@@ -303,6 +341,9 @@ export default function SlideDeck() {
     },
     [n],
   );
+  useEffect(() => {
+    playFromRef.current = playFrom;
+  }, [playFrom]);
   const stopPlay = useCallback(() => {
     setPlaying(false);
     if (typeof window !== "undefined") window.speechSynthesis?.cancel();
@@ -375,6 +416,23 @@ export default function SlideDeck() {
           <button onClick={() => setCaptions((v) => !v)} className="hover:text-[var(--accent)]">
             {captions ? "CC on" : "CC off"}
           </button>
+          {voiceList.length > 0 ? (
+            <select
+              value={voiceURI}
+              onChange={(e) => {
+                setVoiceURI(e.target.value);
+                voiceRef.current = voiceList.find((v) => v.voiceURI === e.target.value) ?? null;
+              }}
+              title="Pick the most natural voice your browser has"
+              className="max-w-[140px] rounded-md border border-[var(--rule)] bg-transparent px-1.5 py-0.5 text-[10px]"
+            >
+              {voiceList.map((v) => (
+                <option key={v.voiceURI} value={v.voiceURI}>
+                  🔊 {v.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
         </div>
         <div className="flex items-center gap-1.5">
           {SLIDES.map((s, idx) => (
