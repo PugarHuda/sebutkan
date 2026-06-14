@@ -90,9 +90,10 @@ export type Work = {
 
 /** Reconstruct an abstract from OpenAlex's inverted index. */
 function deinvert(idx?: Record<string, number[]>): string {
-  if (!idx) return "";
+  if (!idx || typeof idx !== "object") return "";
   const words: string[] = [];
   for (const [word, positions] of Object.entries(idx)) {
+    if (!Array.isArray(positions)) continue; // malformed entry → skip, don't throw
     for (const p of positions) words[p] = word;
   }
   return words.join(" ");
@@ -173,16 +174,27 @@ export async function searchCorpus(query: string, opts: CorpusOptions = {}): Pro
   const identities = enriched.flatMap((e) => e.authors.map(identityOf));
   const wallets = await resolveAuthorWallets(identities);
 
-  return enriched.map(({ w, authors }, rank) => ({
-    id: w.id,
-    title: w.title ?? "(untitled)",
-    year: w.publication_year,
-    url: w.primary_location?.landing_page_url ?? (w.doi ? `https://doi.org/${w.doi}` : w.id),
-    abstract: deinvert(w.abstract_inverted_index).slice(0, 1200),
-    rank,
-    authors: authors.map((a) => {
-      const r = wallets.get(identityOf(a)) ?? { wallet: demoWallet(identityOf(a)), claimed: false };
-      return { id: a.id, name: a.name, orcid: a.orcid, wallet: r.wallet, claimed: r.claimed };
-    }),
-  }));
+  // Per-work transform is wrapped: one malformed paper is dropped, never fatal —
+  // the run proceeds with whatever valid works remain.
+  return enriched
+    .map(({ w, authors }, rank): Work | null => {
+      try {
+        const url = w.primary_location?.landing_page_url ?? (w.doi ? `https://doi.org/${w.doi}` : w.id) ?? "";
+        return {
+          id: w.id ?? w.doi ?? url ?? `openalex-${rank}`,
+          title: w.title ?? "(untitled)",
+          year: w.publication_year,
+          url,
+          abstract: deinvert(w.abstract_inverted_index).slice(0, 1200),
+          rank,
+          authors: authors.map((a) => {
+            const r = wallets.get(identityOf(a)) ?? { wallet: demoWallet(identityOf(a)), claimed: false };
+            return { id: a.id, name: a.name, orcid: a.orcid, wallet: r.wallet, claimed: r.claimed };
+          }),
+        };
+      } catch {
+        return null;
+      }
+    })
+    .filter((w): w is Work => w !== null);
 }

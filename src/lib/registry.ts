@@ -47,7 +47,8 @@ function rpcUrl(): string {
 
 /** keccak256 hash of an author id — the registry key + the message authors sign. */
 export function authorHash(authorId: string): `0x${string}` {
-  return keccak256(encodePacked(["string"], [authorId]));
+  // Coerce: a missing/non-string id must never throw in encodePacked.
+  return keccak256(encodePacked(["string"], [typeof authorId === "string" ? authorId : String(authorId ?? "")]));
 }
 
 /** The exact message an author signs to prove wallet ownership of an authorId. */

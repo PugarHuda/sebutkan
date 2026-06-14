@@ -32,6 +32,13 @@ describe("weightCitations", () => {
   it("empty works → empty payouts", () => {
     expect(weightCitations([])).toEqual([]);
   });
+  it("tolerates malformed works (missing/empty author fields) without throwing", () => {
+    // Mirrors degraded OpenAlex data: author with empty id/name.
+    const messy = [work("1", [{ id: "", name: "" }]), work("2", [{ id: "a", name: "A" }])];
+    expect(() => weightCitations(messy)).not.toThrow();
+    const p = weightCitations(messy);
+    if (p.length) expect(p.reduce((s, x) => s + x.weightBps, 0)).toBe(10_000);
+  });
   it("relevance boosts a lower-ranked but more relevant paper", () => {
     const works = [work("1", [{ id: "a", name: "A" }]), work("2", [{ id: "b", name: "B" }])];
     // Paper 2 is rank-lower but far more relevant per the Citation-Matcher.
@@ -84,6 +91,12 @@ describe("registry", () => {
     for (const bad of [undefined, null, 0]) {
       expect(() => demoWallet(bad as unknown as string)).not.toThrow();
       expect(demoWallet(bad as unknown as string)).toMatch(/^0x[0-9a-fA-F]{40}$/);
+    }
+  });
+  it("authorHash never throws on a missing/non-string id", () => {
+    for (const bad of [undefined, null, 0]) {
+      expect(() => authorHash(bad as unknown as string)).not.toThrow();
+      expect(authorHash(bad as unknown as string)).toMatch(/^0x[0-9a-f]{64}$/);
     }
   });
 });
