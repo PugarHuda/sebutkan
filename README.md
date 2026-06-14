@@ -37,12 +37,13 @@ permalink** (`/r/<id>`) — stored on-chain in ShareRegistry by default (zero-in
 - **Real on-chain attestation** — "Record attestation" sends a live `attest()` tx (QueryAttested + AuthorPaid events). e.g. [`0xc61adf4e…`](https://sepolia.etherscan.io/tx/0xc61adf4ee665794ef6a2588c21dd2469ff6d9855129e9d2d0501d94bd1e1c6c8)
 - **Real author attribution** — `/claim`: an author signs `keccak256(authorId, wallet)`; the operator binds it on-chain in NameRegistry. Payouts route to the real claimed wallet (unclaimed → labeled demo).
 - **Real x402** — the agent pays a USDC micropayment to unlock the top paper; the resource verifies the payment **on-chain** (not a header stub).
-- **Real 1Shot** — live `getCapabilities`/`getFeeData`; gasless redeem builds a signed delegation to the relayer `targetAddress`; **Ed25519 webhook** receiver verifies status against the JWKS.
+- **Real 1Shot** — live `getCapabilities`/`getFeeData`; gasless redeem builds a signed delegation to the relayer `targetAddress`; **Ed25519 webhook** receiver verifies status against the JWKS. Relay on Sepolia or **Base Sepolia** (L2 fees are a fraction of Ethereum testnet's).
+- **Four settlement rails, no double-pay** — the contract blocks re-attesting a query (`AlreadyAttested`), so each author is paid once. Pick: **direct** (`attestAndSplit` — records + pays in one tx, no relayer fee · the primary path), **1Shot** (gasless relay), **escrow→ORCID claim** (unclaimed authors), or **auto-pay** (settles the moment a run finishes, honouring the granted budget).
 - **Real multi-agent coordination** — a Planner decomposes the query into a budget-scaled Reader fan-out, a **Citation-Matcher** (Venice embeddings) drives **relevance-weighted payouts**, a Fact-checker forces a Researcher revision on low confidence, and an on-chain ERC-8004 reputation feedback loop rewards contributors (verified: live `bumpReputation` txs). A **literal two-hop redelegation** (User→Researcher→relayer) can be redeemed on a mainnet via 1Shot (`scripts/test-redelegation-1shot.mjs`).
 - **x402 7710 facilitator** — /api/facilitator/{supported,verify,settle}: verifies the ERC-7710 exact payment and settles it gaslessly on the 1Shot relayer (the track's suggested bonus).
 - **Agent memory · auto-Venice receipt · x402-pay-Venice** — the Planner recalls related prior runs; the Venice image+TTS receipt auto-generates in the main flow; the agent can pay Venice itself via x402 (Venice is x402-gated — `/api/venice-x402/quote` reads its live 402).
 - **Real author rewards** — unclaimed shares accumulate on-chain in UnclaimedEscrow (grows as the author is cited again) and accrue a **12% APR citation-loyalty yield** (CitationYield, protocol-funded); authors withdraw principal + bonus after an ORCID claim. (Aave yield wasn't used: our test-USDC isn't an Aave-supported asset — so the bonus is funded transparently, not faked.)
-- **93 tests** — 32 Foundry + 61 Vitest, all green.
+- **112 tests** — 37 Foundry + 75 Vitest, all green.
 
 ---
 
