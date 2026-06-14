@@ -77,6 +77,15 @@ const CASES = [
   { mode: "attest", topic: "transformer scaling laws for low-resource languages", usdc: 0.20, authors: ["S. Okafor", "D. Volkov", "P. Sharma"] },
   { mode: "attest", topic: "green hydrogen electrolyzer catalyst durability", usdc: 0.27, authors: ["H. Tanaka", "K. Adebayo"] },
   { mode: "attest", topic: "single-cell RNA atlas of tumor microenvironment", usdc: 0.31, authors: ["E. Larsson", "M. Chen", "P. Sharma"] },
+  // --- edge cases: extremes of author-count and amount ---
+  { mode: "attest", topic: "tiny micropayment edge case — single citation", usdc: 0.05, authors: ["S. Okafor"] },
+  { mode: "split", topic: "high-value review — superconductivity at ambient pressure", usdc: 0.50, authors: ["A. Nakamura", "L. Rossi"] },
+  { mode: "attest", topic: "large consortium — global biodiversity genome initiative", usdc: 0.45, authors: ["A. Nakamura", "L. Rossi", "M. Chen", "P. Sharma", "K. Adebayo", "E. Larsson"] },
+  { mode: "attest", topic: "five-author meta-analysis — exoplanet atmospheric retrieval", usdc: 0.38, authors: ["H. Tanaka", "D. Volkov", "S. Okafor", "K. Adebayo", "L. Rossi"] },
+  { mode: "attest", topic: "Indonesian NLP — low-resource Javanese language models", usdc: 0.14, authors: ["R. Wijaya", "S. Okafor"] },
+  { mode: "attest", topic: "tropical peatland carbon flux measurement", usdc: 0.19, authors: ["R. Wijaya", "E. Larsson", "A. Nakamura"] },
+  { mode: "attest", topic: "neuromorphic computing energy efficiency benchmarks", usdc: 0.23, authors: ["D. Volkov", "H. Tanaka"] },
+  { mode: "attest", topic: "CAR-T cell therapy solid tumor penetration", usdc: 0.36, authors: ["P. Sharma", "M. Chen", "E. Larsson", "K. Adebayo"] },
 ];
 
 const splitTotal = CASES.filter((c) => c.mode === "split").reduce((s, c) => s + c.usdc, 0);
