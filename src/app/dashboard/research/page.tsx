@@ -808,6 +808,34 @@ export default function ResearchPage() {
               <b className="text-[var(--ink)]">{perDay >= 16 ? 5 : perDay >= 8 ? 3 : 2} parallel Readers</b> · pays cited
               authors each run · ~<b className="text-[var(--ink)]">{Math.max(1, Math.floor(perDay / 0.01))}</b> runs over the {expiryHours}h window.
             </p>
+
+            {/* Funding model — a choice made BEFORE granting/locking. */}
+            <div className="mt-3">
+              <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">Funding model</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  onClick={() => setPrefund(false)}
+                  className={`rounded-lg border p-2.5 text-left text-[11px] transition ${
+                    !prefund ? "border-[var(--accent)] bg-[var(--accent-soft)]" : "border-[var(--rule)] hover:border-[var(--accent)]/50"
+                  }`}
+                >
+                  <span className="font-medium">{!prefund ? "● " : "○ "}Non-custodial <span className="text-[var(--muted)]">(default)</span></span>
+                  <span className="mt-0.5 block text-[10px] text-[var(--muted)]">Grant a 7715 ceiling — funds stay in your wallet until the split. Settle later (direct or 1Shot) or auto-pay.</span>
+                </button>
+                <button
+                  onClick={() => setPrefund(true)}
+                  className={`rounded-lg border p-2.5 text-left text-[11px] transition ${
+                    prefund ? "border-amber-400 bg-amber-50 dark:bg-amber-950/30" : "border-[var(--rule)] hover:border-amber-400/50"
+                  }`}
+                >
+                  <span className="font-medium">
+                    {prefund ? "● " : "○ "}Lock upfront{" "}
+                    <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] text-amber-700 dark:bg-amber-950 dark:text-amber-300">custodial</span>
+                  </span>
+                  <span className="mt-0.5 block text-[10px] text-[var(--muted)]">Kutip-style: lock {perDay} USDC to the operator now, auto-split to authors when the run finishes.</span>
+                </button>
+              </div>
+            </div>
           </div>
         ) : null}
         <div className="mt-4 flex flex-wrap items-end gap-4">
@@ -1072,23 +1100,6 @@ export default function ResearchPage() {
               <span className="font-medium">Auto-pay authors when research finishes</span>
               <span className="block text-[10px] text-[var(--muted)]">
                 Settles directly on-chain (no relayer) right after each run — honours the budget you committed at grant time
-              </span>
-            </span>
-          </label>
-
-          <label className="flex cursor-pointer items-start gap-2.5 text-[11px] text-[var(--ink)]/80">
-            <input
-              type="checkbox"
-              checked={prefund}
-              onChange={(e) => setPrefund(e.target.checked)}
-              className="mt-0.5 h-3.5 w-3.5 accent-[var(--accent)]"
-            />
-            <span>
-              <span className="font-medium">Lock the budget upfront (Kutip-style) </span>
-              <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">custodial</span>
-              <span className="block text-[10px] text-[var(--muted)]">
-                Pay-and-research: locks {perDay} USDC to the operator now, then auto-splits it to cited authors when the run
-                finishes. (Default is non-custodial — funds stay in your wallet until the split.)
               </span>
             </span>
           </label>
