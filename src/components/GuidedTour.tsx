@@ -118,16 +118,25 @@ export function GuidedTour({ steps, onClose }: { steps: TourStep[]; onClose: () 
     <div className="fixed inset-0 z-[100]">
       {/* Spotlight: dim everything except a hole around the target element. */}
       {rect ? (
-        <div
-          className="pointer-events-none absolute rounded-xl ring-2 ring-[var(--accent)] transition-all duration-300"
-          style={{
-            top: rect.top - pad,
-            left: rect.left - pad,
-            width: rect.width + pad * 2,
-            height: rect.height + pad * 2,
-            boxShadow: "0 0 0 9999px rgba(0,0,0,0.66)",
-          }}
-        />
+        <>
+          <div
+            className="pointer-events-none absolute rounded-xl ring-2 ring-[var(--accent)] transition-all duration-300"
+            style={{
+              top: rect.top - pad,
+              left: rect.left - pad,
+              width: rect.width + pad * 2,
+              height: rect.height + pad * 2,
+              boxShadow: "0 0 0 9999px rgba(0,0,0,0.66)",
+            }}
+          />
+          {/* Visible animated finger pointer at the top-left corner of the target. */}
+          <div
+            className="pointer-events-none absolute animate-bounce text-2xl"
+            style={{ top: rect.top - pad - 24, left: rect.left - pad - 6 }}
+          >
+            👉
+          </div>
+        </>
       ) : (
         <div className="absolute inset-0 bg-black/60" />
       )}

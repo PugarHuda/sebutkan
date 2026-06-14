@@ -52,11 +52,18 @@ export function Sidebar() {
 
   return (
     <aside className="sticky top-0 flex h-dvh w-60 shrink-0 flex-col border-r border-[var(--rule)] bg-[var(--paper-2)] px-4 py-5">
-      <Link href="/" className="mb-7 flex items-center gap-2.5 px-2">
+      <Link href="/" className="mb-4 flex items-center gap-2.5 px-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.svg" alt="" width={26} height={26} />
         <span className="serif text-lg font-semibold">Sebutkan</span>
       </Link>
+
+      <button
+        onClick={() => window.dispatchEvent(new Event("sebutkan:start-tour"))}
+        className="mb-5 w-full rounded-md bg-[var(--accent)] px-3 py-2 text-[11px] font-medium text-white transition hover:opacity-90"
+      >
+        ▶ Take the guided tour
+      </button>
 
       <nav className="flex flex-col gap-4">
         {NAV_SECTIONS.map((section) => (

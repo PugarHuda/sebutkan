@@ -27,16 +27,24 @@ add captions in post. Full script: `pitch.srt`.
 
 ---
 
-### Shortcut: the built-in **Guided Tour** (narrated, with a moving pointer)
+### Shortcut: two built-in **Guided Tours** (narrated, with a 👉 moving pointer)
 
-After any research run, click **▶ Explain this result (guided tour)**. It **spotlights
-each section in turn** (a moving highlight = the pointer), shows a caption/subtitle,
-and **narrates** it with a natural voice — auto-advancing. Screen-record this and you
-have a captioned demo of the result with a pointer, no manual scrubbing. (For the
-grant + settle + claim steps that need wallet signatures, follow the table below.)
+Both auto-pick the most natural English voice your browser has (use the **voice
+dropdown** on `/slide` to switch) and show **subtitles**, with an animated **pointer**
+so viewers always see what's being explained.
 
-Both the deck (`P`) and the tour auto-pick the most natural English voice your browser
-has; use the **voice dropdown** on `/slide` to switch.
+1. **▶ Take the guided tour** (sidebar, top) — a **full product tour** that
+   **navigates every sidebar section for you** (Overview → Research → Library →
+   Agents → Bounties → Claim → Activity), spotlighting each in the sidebar and
+   narrating what it does. Hands-free, interactive (it changes pages itself).
+   **Screen-record this for the whole-product overview part of the demo.**
+
+2. **▶ Explain this result (guided tour)** (after a research run) — a **10-step
+   walkthrough of one run**: the stepper, the granted budget, the A2A mesh, the
+   Ask box, then synthesis → TL;DR → trace → payout → settle → receipt. Spotlight
+   + caption + narration, auto-advancing. **Screen-record this for the deep-dive.**
+
+For the grant + settle + claim steps that need wallet signatures, follow the table below.
 
 ## 2. Live demo video (~3:00) — screen-record the real app
 
