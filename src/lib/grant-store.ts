@@ -20,7 +20,13 @@ const KEY = "sebutkan:active-grant";
 export function saveGrant(g: StoredGrant): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(g));
+    // The granted context contains BigInt values (e.g. periodAmount) — plain
+    // JSON.stringify THROWS on BigInt, which silently dropped the save (grant
+    // looked "lost" after navigation). Serialize BigInt as a string instead.
+    window.localStorage.setItem(
+      KEY,
+      JSON.stringify(g, (_k, v) => (typeof v === "bigint" ? `${v.toString()}n` : v)),
+    );
   } catch {
     /* quota / disabled — best-effort */
   }
