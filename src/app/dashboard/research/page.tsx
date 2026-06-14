@@ -14,6 +14,7 @@ import { pickFlaskConnector } from "@/lib/wagmi";
 import { DownloadableReceipt } from "@/components/DownloadableReceipt";
 import { CitedText } from "@/components/ResultView";
 import { FixSepoliaRpcButton } from "@/components/FixSepoliaRpcButton";
+import { GuidedTour, type TourStep } from "@/components/GuidedTour";
 import { sanitizeDecimal, sanitizeInteger } from "@/lib/format";
 import { saveGrant, loadGrant, clearGrant } from "@/lib/grant-store";
 import { createWalletClient, custom, erc20Abi, type Chain, type WalletClient } from "viem";
@@ -70,6 +71,16 @@ const OPERATOR_ADDRESS =
   (process.env.NEXT_PUBLIC_OPERATOR_ADDRESS as `0x${string}`) ??
   "0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E";
 
+/** Narrated walkthrough of a finished result — spotlights each section in turn. */
+const TOUR_STEPS: TourStep[] = [
+  { selector: "[data-tour=synthesis]", title: "The grounded answer", narration: "This is the grounded synthesis the agent produced — with clickable citations that link straight to each cited paper." },
+  { selector: "[data-tour=summary]", title: "TL;DR", narration: "A short summary from the Summarizer agent, keeping its inline citations." },
+  { selector: "[data-tour=trace]", title: "Multi-agent trace", narration: "Here is how it worked. The Researcher redelegated strictly narrower budgets to a Planner, parallel Readers, a Fact-checker, and a Summarizer — each a real on-chain agent that earns reputation." },
+  { selector: "[data-tour=payout]", title: "Author payout plan", narration: "Every cited author gets a U.S.D.C. share, weighted by Venice embeddings. Demo wallets are shown until the author claims with their ORCID." },
+  { selector: "[data-tour=settle]", title: "Settle on-chain", narration: "One click here records the attestation and pays each author in a single transaction — no relayer fee, and the contract blocks double payment." },
+  { selector: "[data-tour=receipt]", title: "Citation receipt", narration: "Finally, an on-brand citation receipt you can download, plus a Venice-generated image and a spoken briefing." },
+];
+
 const RESEARCH_STEPS = [
   "Search corpus",
   "Purchase via x402",
@@ -122,6 +133,7 @@ export default function ResearchPage() {
     status: "idle",
   });
   const [alreadyAttested, setAlreadyAttested] = useState(false);
+  const [tour, setTour] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptState>({ status: "idle" });
   const [feedback, setFeedback] = useState<FeedbackState>({ status: "idle" });
   const [share, setShare] = useState<ShareState>({ status: "idle" });
@@ -1099,6 +1111,15 @@ export default function ResearchPage() {
 
         {research.status === "done" ? (
           <div className="mt-5 space-y-5">
+            <div className="flex items-center justify-end">
+              <button
+                onClick={() => setTour(true)}
+                title="A narrated, spotlight walkthrough of this result — great for screen-recording a demo"
+                className="rounded-full border border-[var(--accent)] px-3 py-1 text-[11px] font-medium text-[var(--accent)] transition hover:bg-[var(--accent)] hover:text-white"
+              >
+                ▶ Explain this result (guided tour)
+              </button>
+            </div>
             <span
               className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-medium ${
                 research.result.venice === "live"
@@ -1190,12 +1211,12 @@ export default function ResearchPage() {
                 <span className="text-[var(--muted)]">— cleaned from your query (typos fixed, translated)</span>
               </p>
             ) : null}
-            <article className="whitespace-pre-wrap rounded-md bg-[var(--paper)] p-4 text-sm leading-relaxed text-[var(--ink)]/90">
+            <article data-tour="synthesis" className="whitespace-pre-wrap rounded-md bg-[var(--paper)] p-4 text-sm leading-relaxed text-[var(--ink)]/90">
               <CitedText text={research.result.synthesis} works={research.result.works} />
             </article>
 
             {research.result.summary ? (
-              <div className="rounded-md bg-[var(--paper)] p-3">
+              <div data-tour="summary" className="rounded-md bg-[var(--paper)] p-3">
                 <h3 className="text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">
                   Summarizer agent · TL;DR
                 </h3>
@@ -1206,7 +1227,7 @@ export default function ResearchPage() {
             ) : null}
 
             {research.result.agentTrace?.length ? (
-              <div className="rounded-md border border-[var(--rule)] p-4">
+              <div data-tour="trace" className="rounded-md border border-[var(--rule)] p-4">
                 <div className="flex items-center justify-between">
                   <h3 className="serif text-sm font-semibold">Multi-agent trace</h3>
                   <div className="flex items-center gap-2 text-[10px]">
@@ -1293,7 +1314,7 @@ export default function ResearchPage() {
               </div>
             ) : null}
 
-            <div>
+            <div data-tour="payout">
               <h3 className="text-xs font-medium text-neutral-500">
                 Author payout plan — every citation pays its author
               </h3>
@@ -1363,7 +1384,7 @@ export default function ResearchPage() {
                     const locked = alreadyAttested || paid;
                     return (
                       <>
-                        <div className="mt-5 flex items-center gap-2">
+                        <div data-tour="settle" className="mt-5 flex items-center gap-2">
                           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                             Settle — pay the cited authors
                           </p>
@@ -1524,7 +1545,7 @@ export default function ResearchPage() {
 
               {/* THE receipt = the on-brand card. The Venice image/audio are small,
                   clearly-secondary "extras" so it doesn't read as a second receipt. */}
-              <div className="mt-4">
+              <div data-tour="receipt" className="mt-4">
                 <DownloadableReceipt
                   result={research.result}
                   // "Paid" only after an actual PAYMENT (direct, 1Shot, or prefund
@@ -1639,6 +1660,8 @@ export default function ResearchPage() {
           </ul>
         </Card>
       ) : null}
+
+      {tour ? <GuidedTour steps={TOUR_STEPS} onClose={() => setTour(false)} /> : null}
     </main>
   );
 }

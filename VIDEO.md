@@ -27,6 +27,17 @@ add captions in post. Full script: `pitch.srt`.
 
 ---
 
+### Shortcut: the built-in **Guided Tour** (narrated, with a moving pointer)
+
+After any research run, click **▶ Explain this result (guided tour)**. It **spotlights
+each section in turn** (a moving highlight = the pointer), shows a caption/subtitle,
+and **narrates** it with a natural voice — auto-advancing. Screen-record this and you
+have a captioned demo of the result with a pointer, no manual scrubbing. (For the
+grant + settle + claim steps that need wallet signatures, follow the table below.)
+
+Both the deck (`P`) and the tour auto-pick the most natural English voice your browser
+has; use the **voice dropdown** on `/slide` to switch.
+
 ## 2. Live demo video (~3:00) — screen-record the real app
 
 Record the real flow at `https://sebutkan.vercel.app`. Narration + on-screen cues
