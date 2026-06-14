@@ -9,7 +9,7 @@ import type { ResearchResult } from "@/lib/agent";
 import Link from "next/link";
 import { AGENT_MESH, narrowedFor } from "@/lib/agents";
 import { redeemViaOneShot } from "@/lib/redeem";
-import { loadHistory, saveToHistory, removeFromHistory, clearHistory, type HistoryEntry } from "@/lib/history";
+import { loadHistory, saveToHistory, removeFromHistory, type HistoryEntry } from "@/lib/history";
 import { pickFlaskConnector } from "@/lib/wagmi";
 import { DownloadableReceipt } from "@/components/DownloadableReceipt";
 import { CitedText } from "@/components/ResultView";
@@ -684,9 +684,14 @@ export default function ResearchPage() {
         ) : null}
         {revoke.status === "error" ? <p className="mt-2 text-[11px] text-red-600">{revoke.message}</p> : null}
         {grant.status === "granted" ? (
-          <pre className="mt-4 max-h-48 overflow-auto rounded-md bg-neutral-100 p-3 text-[11px] dark:bg-neutral-900">
-            {JSON.stringify(grant.context, bigintReplacer, 2)}
-          </pre>
+          <details className="mt-4">
+            <summary className="cursor-pointer text-[11px] text-[var(--muted)] hover:text-[var(--accent)]">
+              View raw permission context (ERC-7715)
+            </summary>
+            <pre className="mt-2 max-h-48 overflow-auto rounded-md bg-neutral-100 p-3 text-[11px] dark:bg-neutral-900">
+              {JSON.stringify(grant.context, bigintReplacer, 2)}
+            </pre>
+          </details>
         ) : null}
         {grant.status === "error" ? (
           <div className="mt-3 space-y-2">
@@ -703,14 +708,18 @@ export default function ResearchPage() {
         ) : null}
       </Card>
 
-      {/* A2A tree */}
+      {/* A2A tree — collapsed by default to keep the page focused. */}
       <Card>
-        <StepHead title="Agent mesh — redelegation (A2A)" />
-        <p className="mt-1 text-xs text-neutral-500">
-          The Researcher subcontracts the Summarizer by redelegating a strictly narrower slice.
-          Authority only narrows — caveats tighten, never loosen.
-        </p>
-        <ol className="mt-4 space-y-1.5">
+        <details>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
+            <StepHead title="Agent mesh — redelegation (A2A)" />
+            <span className="text-[11px] text-[var(--muted)]">show ▾</span>
+          </summary>
+          <p className="mt-1 text-xs text-neutral-500">
+            The Researcher subcontracts the Summarizer by redelegating a strictly narrower slice.
+            Authority only narrows — caveats tighten, never loosen.
+          </p>
+          <ol className="mt-4 space-y-1.5">
           {AGENT_MESH.map((role) => {
             const now = Math.floor(Date.now() / 1000);
             const { budgetUSDC, expiryUnix } = narrowedFor(role, perDay, now + expiryHours * 3600, now);
@@ -741,7 +750,8 @@ export default function ResearchPage() {
               </li>
             );
           })}
-        </ol>
+          </ol>
+        </details>
       </Card>
 
       {/* 3. Research */}
@@ -1258,51 +1268,65 @@ export default function ResearchPage() {
                 <p className="mt-2 text-[11px] text-amber-600">Reputation update skipped: {feedback.message}</p>
               ) : null}
 
-              {/* Canonical on-brand receipt — always shown, consistent design,
-                  reproducible from the saved run. Venice image/audio are extras. */}
-              <div className="mt-4 space-y-3">
+              {/* THE receipt = the on-brand card. The Venice image/audio are small,
+                  clearly-secondary "extras" so it doesn't read as a second receipt. */}
+              <div className="mt-4">
                 <DownloadableReceipt
                   result={research.result}
                   // "Paid" only after an actual PAYMENT (direct or 1Shot) — the
                   // record-only attestation (①) doesn't move money to authors.
                   settled={payDirect.status === "done" || redeem.status === "done"}
                 />
-                {receipt.status === "generating" ? (
-                  <p className="text-[11px] text-[var(--muted)]">Generating Venice multimodal extras…</p>
-                ) : null}
-                {receipt.status === "done" && receipt.image ? (
-                  <div>
-                    <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--muted)]">
-                      🎨 Venice-generated art (z-image-turbo)
+                {receipt.status === "generating" ||
+                (receipt.status === "done" && (receipt.image || receipt.audioBase64)) ? (
+                  <div className="mt-3 max-w-sm rounded-lg border border-[var(--rule)] bg-[var(--paper)] p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                      ✦ Venice multimodal extras
                     </p>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={receipt.image.startsWith("data:") ? receipt.image : `data:image/webp;base64,${receipt.image}`}
-                      alt="Venice citation receipt art"
-                      className="w-full max-w-sm rounded-lg border border-neutral-200 dark:border-neutral-800"
-                    />
-                  </div>
-                ) : null}
-                {receipt.status === "done" && receipt.audioBase64 ? (
-                  <div>
-                    <p className="mb-1 text-[10px] uppercase tracking-wide text-[var(--muted)]">
-                      🔊 Spoken briefing (Venice TTS · matches the answer’s language)
-                    </p>
-                    <audio controls src={`data:audio/mp3;base64,${receipt.audioBase64}`} className="w-full max-w-sm" />
+                    {receipt.status === "generating" ? (
+                      <p className="mt-1 text-[11px] text-[var(--muted)]">Generating image + audio…</p>
+                    ) : (
+                      <div className="mt-2 flex items-start gap-3">
+                        {receipt.image ? (
+                          <a
+                            href={receipt.image.startsWith("data:") ? receipt.image : `data:image/webp;base64,${receipt.image}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="z-image-turbo art — click to enlarge"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={receipt.image.startsWith("data:") ? receipt.image : `data:image/webp;base64,${receipt.image}`}
+                              alt="Venice citation art"
+                              className="h-24 w-24 rounded-md border border-neutral-200 object-cover dark:border-neutral-800"
+                            />
+                          </a>
+                        ) : null}
+                        {receipt.audioBase64 ? (
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] text-[var(--muted)]">🔊 Spoken briefing (TTS · answer’s language)</p>
+                            <audio controls src={`data:audio/mp3;base64,${receipt.audioBase64}`} className="mt-1 w-full" />
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
                   </div>
                 ) : null}
                 {receipt.status === "done" && receipt.degraded && !receipt.audioBase64 && !receipt.image ? (
-                  <p className="text-[11px] text-[var(--muted)]">
-                    Venice multimodal extras unavailable (no credit) — the receipt above is always available.
+                  <p className="mt-2 text-[11px] text-[var(--muted)]">
+                    Venice extras unavailable (no credit) — the receipt above is always available.
                   </p>
                 ) : null}
               </div>
               {receipt.status === "error" ? <ErrorBox>{receipt.message}</ErrorBox> : null}
 
               {redeem.status === "done" ? (
-                <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-indigo-50 p-3 text-[11px] dark:bg-indigo-950/40">
-                  {JSON.stringify(redeem.result, null, 2)}
-                </pre>
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-[11px] text-emerald-600">✓ Relayed via 1Shot — view raw response</summary>
+                  <pre className="mt-2 max-h-56 overflow-auto rounded-md bg-indigo-50 p-3 text-[11px] dark:bg-indigo-950/40">
+                    {JSON.stringify(redeem.result, null, 2)}
+                  </pre>
+                </details>
               ) : null}
               {redeem.status === "error" ? <ErrorBox>{redeem.message}</ErrorBox> : null}
               {settle.status === "error" ? <ErrorBox>{settle.message}</ErrorBox> : null}
@@ -1311,24 +1335,17 @@ export default function ResearchPage() {
         ) : null}
       </Card>
 
-      {/* Saved research — this device's history (localStorage) */}
+      {/* Saved research — last few; full list lives on the Library page. */}
       {history.length > 0 ? (
         <Card>
           <div className="flex items-center justify-between">
-            <StepHead title="Recent research (saved on this device)" />
-            <button
-              onClick={() => setHistory(clearHistory())}
-              className="text-[11px] text-[var(--muted)] underline hover:text-[var(--accent)]"
-            >
-              clear all
-            </button>
+            <StepHead title="Recent research" />
+            <Link href="/dashboard/library" className="text-[11px] font-medium text-[var(--accent)] hover:underline">
+              View all ({history.length}) in Library →
+            </Link>
           </div>
-          <p className="mt-1 text-xs text-neutral-500">
-            Finished runs are kept in your browser so you can re-open them after a refresh — synthesis,
-            agent trace, and payout plan included. The on-chain attestation remains the canonical paid record.
-          </p>
           <ul className="mt-3 space-y-px overflow-hidden rounded-md border border-[var(--rule)] bg-[var(--rule)]">
-            {history.map((h) => (
+            {history.slice(0, 3).map((h) => (
               <li key={h.id} className="flex items-center justify-between gap-3 bg-[var(--paper-2)] px-3 py-2.5">
                 <Link href={`/dashboard/result/${encodeURIComponent(h.id)}`} className="min-w-0 flex-1 text-left">
                   <div className="truncate text-xs font-medium text-[var(--ink)]" title={h.query}>
