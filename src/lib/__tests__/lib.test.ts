@@ -79,6 +79,13 @@ describe("registry", () => {
       expect(demoWallet(s)).not.toBe("0x0000000000000000000000000000000000000000");
     }
   });
+  it("demoWallet never throws on a missing/non-string seed (OpenAlex omits author.id)", () => {
+    // Regression: 'seed is not iterable' crashed research when an author had no id.
+    for (const bad of [undefined, null, 0]) {
+      expect(() => demoWallet(bad as unknown as string)).not.toThrow();
+      expect(demoWallet(bad as unknown as string)).toMatch(/^0x[0-9a-fA-F]{40}$/);
+    }
+  });
 });
 
 describe("settlement", () => {
