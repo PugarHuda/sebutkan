@@ -98,6 +98,9 @@ Next.js app ── /research
 ## Docs
 
 - **[Live docs](https://sebutkan.vercel.app/docs)** — overview, agent mesh, earnings, all contracts, API, on-chain proof
+- **Guided tours (in-app)** — **▶ Take the guided tour** in the dashboard sidebar walks every
+  section for you (it changes pages itself, with a pointer + spoken narration); **▶ Explain this
+  result** narrates one finished run step by step. Both are screen-recordable demos with subtitles.
 - **[Pitch deck](https://sebutkan.vercel.app/slide)** — self-playing **narrated** deck with on-screen subtitles (press **▶ Play** / **P**)
 - **[VIDEO.md](./VIDEO.md)** — how to record the pitch + demo videos; subtitles in `public/pitch.srt`, `public/pitch.vtt`, `public/demo.srt`
 - **[SUBMISSION.md](./SUBMISSION.md)** — per-track qualification (copy into each HackQuest track)
