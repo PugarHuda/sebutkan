@@ -491,7 +491,10 @@ export default function ResearchPage() {
     const params: BudgetParams = {
       sessionAccount: SESSION_ACCOUNT,
       perPeriodUSDC: perDay,
-      periodSeconds: 86_400,
+      // The spending period == the grant lifetime, so the cap is "X USDC for the
+      // whole Nh window" (matches the expiry) rather than a daily reset that could
+      // mismatch a non-24h expiry.
+      periodSeconds: Math.max(1, expiryHours) * 3600,
       expiry: Math.floor(Date.now() / 1000) + expiryHours * 3600,
       chainId: PERMISSION_CHAIN.id,
     };
@@ -754,7 +757,9 @@ export default function ResearchPage() {
         ) : null}
         {grant.status !== "granted" ? (
           <div className="mt-3">
-            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">Daily budget</p>
+            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">
+              Budget for this grant (the agent can spend up to this over the {expiryHours}h window)
+            </p>
             <div className="flex flex-wrap items-center gap-1.5">
               {[0.1, 0.5, 1, 2].map((v) => (
                 <button
@@ -776,16 +781,16 @@ export default function ResearchPage() {
                   inputMode="decimal"
                   value={perDayInput}
                   onChange={(e) => setPerDayInput(sanitizeDecimal(e.target.value))}
-                  aria-label="Custom USDC per day"
+                  aria-label="Custom USDC budget"
                   className="w-16 rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 text-xs dark:border-neutral-700"
                 />
-                /day
+                USDC
               </span>
             </div>
             <p className="mt-2 text-[11px] text-[var(--muted)]">
               This budget funds ≈ <b className="text-[var(--ink)]">{papers} papers/run</b> ·{" "}
               <b className="text-[var(--ink)]">{perDay >= 16 ? 5 : perDay >= 8 ? 3 : 2} parallel Readers</b> · pays cited
-              authors each run · ~<b className="text-[var(--ink)]">{Math.max(1, Math.floor(perDay / 0.01))}</b> runs/day within the cap.
+              authors each run · ~<b className="text-[var(--ink)]">{Math.max(1, Math.floor(perDay / 0.01))}</b> runs over the {expiryHours}h window.
             </p>
           </div>
         ) : null}
@@ -1130,8 +1135,8 @@ export default function ResearchPage() {
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
                       <span>
                         💰 Budget cap:{" "}
-                        <b className="text-[var(--ink)]">{cap.toFixed(2)} USDC/day</b>{" "}
-                        <span className="text-[var(--muted)]">(granted ceiling)</span>
+                        <b className="text-[var(--ink)]">{cap.toFixed(2)} USDC</b>{" "}
+                        <span className="text-[var(--muted)]">(granted, for this window)</span>
                       </span>
                       <span>
                         💸 Used this run:{" "}
@@ -1706,8 +1711,9 @@ function GrantStatus({ expiryUnix, capUSDC }: { expiryUnix: number; capUSDC: num
     <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900 dark:bg-emerald-950/20">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-[11px] font-medium text-[var(--ink)]">
-          💰 Granted ceiling:{" "}
-          <span className="font-mono text-emerald-700 dark:text-emerald-400">{capUSDC.toFixed(2)} USDC/day</span>
+          💰 Granted budget:{" "}
+          <span className="font-mono text-emerald-700 dark:text-emerald-400">{capUSDC.toFixed(2)} USDC</span>{" "}
+          <span className="text-[var(--muted)]">for this window</span>
         </span>
         <span className="font-mono text-[11px] text-[var(--muted)]">
           ⏱ {h}h {m}m {s}s left
