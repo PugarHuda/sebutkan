@@ -1,7 +1,5 @@
 import type { ResearchResult } from "@/lib/agent";
 
-const stripTags = (s: string) => s.replace(/<[^>]+>/g, "");
-
 /**
  * On-brand "Citations Paid" receipt — a deterministic HTML/CSS card rendered from
  * the saved run (query, author count, settled amount, top authors). Unlike the

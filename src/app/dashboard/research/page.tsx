@@ -572,7 +572,7 @@ export default function ResearchPage() {
           Authority only narrows — caveats tighten, never loosen.
         </p>
         <ol className="mt-4 space-y-1.5">
-          {AGENT_MESH.map((role, i) => {
+          {AGENT_MESH.map((role) => {
             const now = Math.floor(Date.now() / 1000);
             const { budgetUSDC, expiryUnix } = narrowedFor(role, perDay, now + expiryHours * 3600, now);
             const hours = Math.max(0, Math.round((expiryUnix - now) / 3600));

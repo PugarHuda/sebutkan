@@ -9,8 +9,6 @@ import { useCallback, useEffect, useState } from "react";
  * Editorial theme, full-bleed slides. Press F for fullscreen.
  */
 
-const ACCENT = "var(--accent)";
-
 function Kicker({ children }: { children: React.ReactNode }) {
   return <p className="text-[11px] uppercase tracking-[0.25em] text-[var(--accent)]">{children}</p>;
 }
