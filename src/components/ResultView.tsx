@@ -82,7 +82,9 @@ export function ResultView({ result }: { result: ResearchResult }) {
           <h3 className="text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">
             Summarizer agent · TL;DR
           </h3>
-          <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--ink)]/90">{result.summary}</p>
+          <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--ink)]/90">
+            <CitedText text={result.summary} works={works} />
+          </p>
         </div>
       ) : null}
 

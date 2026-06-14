@@ -852,7 +852,9 @@ export default function ResearchPage() {
                 <h3 className="text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">
                   Summarizer agent · TL;DR
                 </h3>
-                <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--ink)]/90">{research.result.summary}</p>
+                <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--ink)]/90">
+                  <CitedText text={research.result.summary} works={research.result.works} />
+                </p>
               </div>
             ) : null}
 

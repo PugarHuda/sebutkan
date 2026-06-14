@@ -457,7 +457,11 @@ export async function orchestrate(
       messages: [
         {
           role: "system",
-          content: "You are a Summarizer agent. Give a 2-sentence TL;DR of the answer. No preamble. " + lang(opts.language),
+          content:
+            "You are a Summarizer agent. Give a 2-3 sentence TL;DR of the answer. No preamble. " +
+            "Preserve the inline citation markers exactly as they appear in the source (e.g. [1], [2]) so the " +
+            "TL;DR stays attributable — keep each claim's [n] marker. " +
+            lang(opts.language),
         },
         { role: "user", content: synthesis },
       ],
