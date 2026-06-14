@@ -112,7 +112,7 @@ export function Sidebar() {
                 </div>
               )}
               <div className="mt-2">
-                <FixSepoliaRpcButton className="text-[10px] text-[var(--muted)] underline hover:text-[var(--accent)]" />
+                <FixSepoliaRpcButton variant="link" />
               </div>
               <button
                 onClick={() => disconnect()}
@@ -129,7 +129,7 @@ export function Sidebar() {
               >
                 Connect MetaMask Flask
               </button>
-              <FixSepoliaRpcButton className="text-[10px] text-[var(--muted)] underline hover:text-[var(--accent)]" />
+              <FixSepoliaRpcButton variant="link" />
             </div>
           ) : (
             <a

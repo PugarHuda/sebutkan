@@ -15,14 +15,27 @@ const SEPOLIA_ADD_PARAMS = {
 
 type Eip1193 = { request: (a: { method: string; params?: unknown[] }) => Promise<unknown> };
 
+/** Pull a readable message out of an Error OR an EIP-1193 `{code,message}` object. */
+function errMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === "object") {
+    const o = e as { shortMessage?: unknown; message?: unknown; data?: { message?: unknown } };
+    if (typeof o.shortMessage === "string") return o.shortMessage;
+    if (typeof o.message === "string") return o.message;
+    if (o.data && typeof o.data.message === "string") return o.data.message;
+  }
+  return "Something went wrong adding the network.";
+}
+
 /**
  * One-click fix for the #1 support issue: MetaMask's default Sepolia RPC (Infura)
  * is rate-limited and can't read the USDC token, so Grant fails. This auto-adds a
  * working public RPC via wallet_addEthereumChain (connecting Flask first if
- * needed) — no manual network form. MetaMask either adds Sepolia or appends the
- * RPC to the existing network and switches to it.
+ * needed) — no manual network form.
+ *
+ * `variant`: "button" (default, full pill) or "link" (compact inline link).
  */
-export function FixSepoliaRpcButton({ className }: { className?: string }) {
+export function FixSepoliaRpcButton({ variant = "button" }: { variant?: "button" | "link" }) {
   const { isConnected, connector } = useAccount();
   const { connectors, connectAsync } = useConnect();
   const { switchChainAsync } = useSwitchChain();
@@ -33,46 +46,53 @@ export function FixSepoliaRpcButton({ className }: { className?: string }) {
     setState("working");
     setMsg(null);
     try {
-      // Connect Flask first if the user isn't connected yet.
       let active = connector;
       if (!isConnected || !active) {
         const flask = pickFlaskConnector(connectors);
         if (!flask) throw new Error("MetaMask Flask not found — install it first.");
-        const res = await connectAsync({ connector: flask });
-        active = res.accounts ? flask : active;
+        await connectAsync({ connector: flask });
+        active = flask;
       }
       const provider = (await active?.getProvider()) as Eip1193 | undefined;
       if (!provider?.request) throw new Error("Wallet provider unavailable — reconnect and retry.");
 
       await provider.request({ method: "wallet_addEthereumChain", params: [SEPOLIA_ADD_PARAMS] });
-      // Make sure we're on Sepolia after adding.
       try {
         await switchChainAsync({ chainId: 11155111 });
       } catch {
-        /* user may already be on Sepolia */
+        /* may already be on Sepolia */
       }
       setState("done");
-      setMsg("✓ Sepolia RPC added. Try Grant again.");
+      setMsg("Sepolia RPC added — try Grant again.");
     } catch (e) {
-      const raw = e instanceof Error ? e.message : String(e);
+      const raw = errMessage(e);
       setState("error");
-      setMsg(/rejected|denied/i.test(raw) ? "You dismissed the wallet prompt." : raw);
+      setMsg(/rejected|denied|cancel/i.test(raw) ? "You dismissed the wallet prompt." : raw);
     }
   }
 
+  const label =
+    state === "working" ? "Adding RPC…" : state === "done" ? "✓ RPC added" : "⚡ Auto-fix Sepolia RPC";
+
+  const btnClass =
+    variant === "link"
+      ? "inline-flex items-center gap-1 text-[10px] font-medium text-[var(--accent)] underline-offset-2 hover:underline disabled:opacity-50"
+      : "inline-flex items-center gap-1.5 rounded-md bg-amber-500 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm transition hover:bg-amber-600 disabled:opacity-60";
+
   return (
-    <span className="inline-flex flex-col gap-1">
-      <button
-        onClick={fix}
-        disabled={state === "working"}
-        className={
-          className ??
-          "rounded-md bg-amber-500 px-3 py-1.5 text-[11px] font-medium text-white transition hover:bg-amber-600 disabled:opacity-50"
-        }
-      >
-        {state === "working" ? "Adding RPC…" : "⚡ Auto-fix Sepolia RPC"}
+    <span className="inline-flex flex-col items-start gap-1">
+      <button onClick={fix} disabled={state === "working"} className={btnClass}>
+        {state === "working" ? (
+          <span className="inline-block h-3 w-3 animate-spin rounded-full border-[1.5px] border-white/40 border-t-white" />
+        ) : null}
+        {label}
       </button>
-      {msg ? <span className={`text-[10px] ${state === "error" ? "text-red-600" : "text-emerald-600"}`}>{msg}</span> : null}
+      {msg ? (
+        <span className={`max-w-[220px] text-[10px] leading-snug ${state === "error" ? "text-red-600" : "text-emerald-600"}`}>
+          {state === "error" ? "⚠ " : "✓ "}
+          {msg}
+        </span>
+      ) : null}
     </span>
   );
 }

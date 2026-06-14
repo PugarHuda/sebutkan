@@ -66,6 +66,17 @@ const CASES = [
   { mode: "split", topic: "surface-code quantum error correction thresholds", usdc: 0.15, authors: ["L. Rossi", "M. Chen", "P. Sharma", "K. Adebayo"] },
   { mode: "attest", topic: "enzymatic ocean microplastic degradation", usdc: 0.25, authors: ["S. Okafor", "A. Nakamura"] },
   { mode: "attest", topic: "thermostable mRNA vaccine formulation", usdc: 0.40, authors: ["P. Sharma", "M. Chen", "K. Adebayo", "L. Rossi"] },
+  // --- richer batch (attest-only, no operator USDC needed) ---
+  { mode: "attest", topic: "solid-state lithium battery dendrite suppression", usdc: 0.35, authors: ["H. Tanaka", "L. Rossi", "M. Chen"] },
+  { mode: "attest", topic: "graph neural networks for molecular property prediction", usdc: 0.18, authors: ["S. Okafor", "D. Volkov"] },
+  { mode: "attest", topic: "direct air capture sorbent regeneration energy", usdc: 0.28, authors: ["A. Nakamura", "K. Adebayo"] },
+  { mode: "attest", topic: "gut microbiome and immunotherapy response", usdc: 0.22, authors: ["P. Sharma", "E. Larsson", "M. Chen"] },
+  { mode: "attest", topic: "federated learning differential privacy bounds", usdc: 0.12, authors: ["D. Volkov"] },
+  { mode: "attest", topic: "perovskite tandem cell certified efficiency", usdc: 0.33, authors: ["A. Nakamura", "L. Rossi", "H. Tanaka", "K. Adebayo"] },
+  { mode: "attest", topic: "wastewater-based epidemiology SARS-CoV-2 variants", usdc: 0.16, authors: ["E. Larsson", "S. Okafor"] },
+  { mode: "attest", topic: "transformer scaling laws for low-resource languages", usdc: 0.20, authors: ["S. Okafor", "D. Volkov", "P. Sharma"] },
+  { mode: "attest", topic: "green hydrogen electrolyzer catalyst durability", usdc: 0.27, authors: ["H. Tanaka", "K. Adebayo"] },
+  { mode: "attest", topic: "single-cell RNA atlas of tumor microenvironment", usdc: 0.31, authors: ["E. Larsson", "M. Chen", "P. Sharma"] },
 ];
 
 const splitTotal = CASES.filter((c) => c.mode === "split").reduce((s, c) => s + c.usdc, 0);

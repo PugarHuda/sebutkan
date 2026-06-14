@@ -39,12 +39,15 @@ export default function Home() {
             Claim your wallet (authors)
           </Link>
         </div>
-        <p className="mt-4 text-xs text-[var(--muted)]">
-          New here?{" "}
-          <Link href="/docs" className="link-accent font-medium">
-            Read the docs →
+        <div className="mt-5 flex items-center justify-center gap-2 text-[11px] text-[var(--muted)]">
+          <span>New here?</span>
+          <Link
+            href="/docs"
+            className="inline-flex items-center gap-1 rounded-full border border-[var(--rule)] px-3 py-1 font-medium text-[var(--ink)]/80 transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
+            📖 Read the docs
           </Link>
-        </p>
+        </div>
       </section>
 
       <hr className="my-16 w-full max-w-2xl border-[var(--rule)]" />

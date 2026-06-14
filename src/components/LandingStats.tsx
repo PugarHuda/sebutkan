@@ -48,11 +48,14 @@ export function LandingStats() {
           </div>
         ))}
       </div>
-      <p className="mt-2 text-center text-[11px] text-[var(--muted)]">
-        <a href="/dashboard/activity" className="link-accent underline">
-          See every payment →
+      <div className="mt-3 text-center">
+        <a
+          href="/dashboard/activity"
+          className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-3.5 py-1.5 text-[11px] font-medium text-[var(--accent)] transition hover:bg-[var(--accent)] hover:text-white"
+        >
+          See every payment on-chain →
         </a>
-      </p>
+      </div>
     </section>
   );
 }
