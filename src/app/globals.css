@@ -89,19 +89,27 @@ body {
 /* ── Flying / scattered paper field (hero background) ─────────────────────── */
 .paper-sheet {
   position: absolute;
-  background: var(--paper-2);
+  background-color: var(--paper-2);
   border: 1px solid var(--rule);
   border-radius: 2px;
-  box-shadow: 0 8px 18px rgba(27, 26, 23, 0.06);
-  /* faint ruled lines, like notebook paper */
-  background-image: repeating-linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--rule) 70%, transparent) 0,
-    color-mix(in srgb, var(--rule) 70%, transparent) 1px,
-    transparent 1px,
-    transparent 8px
-  );
-  background-position: 0 9px;
+  box-shadow: 0 10px 22px rgba(27, 26, 23, 0.08);
+  /* Layered to look like a little research paper:
+     (1) an emerald title bar near the top,
+     (2) a short accent "citation" bar near the bottom-left,
+     (3) faint ruled body lines.  First layer = topmost. */
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--accent) 34%, transparent), color-mix(in srgb, var(--accent) 34%, transparent)),
+    linear-gradient(color-mix(in srgb, var(--accent) 50%, transparent), color-mix(in srgb, var(--accent) 50%, transparent)),
+    repeating-linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--ink) 26%, transparent) 0,
+      color-mix(in srgb, var(--ink) 26%, transparent) 1px,
+      transparent 1px,
+      transparent 9px
+    );
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-size: 56% 7px, 30% 5px, 100% 9px;
+  background-position: 14% 13%, 14% 88%, 0 34%;
 }
 /* folded top-right corner */
 .paper-sheet::after {
@@ -128,31 +136,33 @@ body {
    middle .paper-sway → swings left↔right like a leaf (ease-in-out, alternating)
    inner  .paper-sheet→ slowly flips in 3D (rotateY tumble)                     */
 @keyframes paper-fall {
-  0%   { transform: translateY(-220px); opacity: 0; }
+  0%   { transform: translateY(-220px) rotateZ(0deg); opacity: 0; }
   7%   { opacity: var(--op, 0.22); }
   93%  { opacity: var(--op, 0.22); }
-  100% { transform: translateY(var(--fall, 980px)); opacity: 0; }
+  100% { transform: translateY(var(--fall, 980px)) rotateZ(var(--spin, 220deg)); opacity: 0; }
 }
 .paper-fall {
   animation: paper-fall var(--dur, 14s) linear var(--delay, 0s) infinite;
   will-change: transform, opacity;
 }
+/* horizontal drift, like a leaf catching air (ease-in-out, alternating) */
 @keyframes paper-sway {
-  0%   { transform: translateX(calc(var(--sway, 34px) * -1)) rotate(var(--r0, -10deg)); }
-  100% { transform: translateX(var(--sway, 34px)) rotate(var(--r1, 10deg)); }
+  0%   { transform: translateX(calc(var(--sway, 34px) * -1)); }
+  100% { transform: translateX(var(--sway, 34px)); }
 }
 .paper-sway {
   display: block;
   animation: paper-sway var(--swayDur, 4s) ease-in-out var(--delay, 0s) infinite alternate;
 }
-@keyframes paper-tumble {
-  to { transform: rotateY(360deg); }
+/* 3D flutter — the sheet tilts toward/away as it tumbles through the air */
+@keyframes paper-flutter {
+  0%, 100% { transform: perspective(700px) rotateX(10deg) rotateY(-22deg); }
+  50%      { transform: perspective(700px) rotateX(-12deg) rotateY(22deg); }
 }
-.paper-tumble {
-  animation: paper-tumble var(--tumbleDur, 7s) linear var(--delay, 0s) infinite;
-  transform-style: preserve-3d;
+.paper-flutter {
+  animation: paper-flutter var(--flutterDur, 5s) ease-in-out var(--delay, 0s) infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .paper-float, .paper-fall, .paper-sway, .paper-tumble { animation: none; }
+  .paper-float, .paper-fall, .paper-sway, .paper-flutter { animation: none; }
 }
