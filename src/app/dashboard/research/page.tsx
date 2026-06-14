@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAccount, useConnect, useDisconnect, useWalletClient, useSwitchChain } from "wagmi";
+import { useAccount, useConnect, useDisconnect, usePublicClient, useWalletClient, useSwitchChain } from "wagmi";
 import { requestBudgetPermission, revokeBudget, type BudgetParams } from "@/lib/permissions";
-import { PERMISSION_CHAIN } from "@/lib/chains";
+import { PERMISSION_CHAIN, USDC } from "@/lib/chains";
+import { ATTRIBUTION_LEDGER_ABI, queryIdOf } from "@/lib/settlement";
 import type { ResearchResult } from "@/lib/agent";
 import Link from "next/link";
 import { AGENT_MESH, narrowedFor } from "@/lib/agents";
@@ -14,7 +15,7 @@ import { DownloadableReceipt } from "@/components/DownloadableReceipt";
 import { FixSepoliaRpcButton } from "@/components/FixSepoliaRpcButton";
 import { sanitizeDecimal, sanitizeInteger } from "@/lib/format";
 import { saveGrant, loadGrant, clearGrant } from "@/lib/grant-store";
-import { createWalletClient, custom, type WalletClient } from "viem";
+import { createWalletClient, custom, erc20Abi, type WalletClient } from "viem";
 
 type ResearchState =
   | { status: "idle" }
@@ -76,6 +77,7 @@ export default function ResearchPage() {
   const { connectors, connect, isPending: connecting } = useConnect();
   const { disconnect } = useDisconnect();
   const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
   const { switchChain } = useSwitchChain();
 
   // String-backed numeric inputs: a controlled <input type="number"> in React
@@ -99,6 +101,9 @@ export default function ResearchPage() {
   const [research, setResearch] = useState<ResearchState>({ status: "idle" });
   const [settle, setSettle] = useState<SettleState>({ status: "idle" });
   const [redeem, setRedeem] = useState<RedeemState>({ status: "idle" });
+  const [payDirect, setPayDirect] = useState<{ status: "idle" | "approving" | "paying" | "done" | "error"; tx?: string; message?: string }>({
+    status: "idle",
+  });
   const [receipt, setReceipt] = useState<ReceiptState>({ status: "idle" });
   const [feedback, setFeedback] = useState<FeedbackState>({ status: "idle" });
   const [share, setShare] = useState<ShareState>({ status: "idle" });
@@ -230,6 +235,64 @@ export default function ResearchPage() {
       setRedeem({ status: "done", result });
     } catch (e) {
       setRedeem({ status: "error", message: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  /**
+   * Pay authors DIRECTLY on-chain (no 1Shot relayer): approve USDC, then call
+   * AttributionLedger.attestAndSplit — one tx that records the attestation AND
+   * transfers each author their weighted USDC share, straight from the user's
+   * wallet. Simpler demo path with no relayer fee (user pays gas in ETH).
+   */
+  async function handlePayDirect() {
+    if (research.status !== "done") return;
+    if (payDirect.status === "approving" || payDirect.status === "paying") return;
+    const ledger = process.env.NEXT_PUBLIC_ATTRIBUTION_LEDGER as `0x${string}` | undefined;
+    if (!ledger) {
+      setPayDirect({ status: "error", message: "Attribution ledger not configured." });
+      return;
+    }
+    const wc = await resolveWalletClient();
+    if (!wc || !wc.account) {
+      setPayDirect({ status: "error", message: "Wallet not ready — reconnect MetaMask Flask." });
+      return;
+    }
+    try {
+      const amount = BigInt(Math.round((research.result.recommendedSettleUSDC ?? 0.5) * 1e6));
+      const usdcAddr = USDC[PERMISSION_CHAIN.id];
+      const cites = research.result.payouts.map((p) => ({ author: p.author as `0x${string}`, weightBps: p.weightBps }));
+
+      setPayDirect({ status: "approving" });
+      const approveTx = await wc.writeContract({
+        address: usdcAddr,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [ledger, amount],
+        account: wc.account,
+        chain: wc.chain,
+      });
+      // Wait for approval before the split (one in-flight tx for 7702 wallets).
+      await publicClient?.waitForTransactionReceipt({ hash: approveTx });
+
+      setPayDirect({ status: "paying" });
+      const tx = await wc.writeContract({
+        address: ledger,
+        abi: ATTRIBUTION_LEDGER_ABI,
+        functionName: "attestAndSplit",
+        args: [queryIdOf(research.result.query), amount, cites],
+        account: wc.account,
+        chain: wc.chain,
+      });
+      setPayDirect({ status: "done", tx });
+      recordAgentFeedback();
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : String(e);
+      const friendly = /unauthorized|json-rpc protocol|in-flight transaction limit/i.test(raw)
+        ? "Your wallet rejected the payment (a 7702-delegated account or rate-limited RPC). Try a fresh wallet, or use the gasless 1Shot button."
+        : /insufficient|exceeds balance/i.test(raw)
+          ? "Not enough USDC in your wallet to settle. Fund it with test USDC and retry."
+          : raw;
+      setPayDirect({ status: "error", message: friendly });
     }
   }
 
@@ -962,14 +1025,37 @@ export default function ResearchPage() {
                       disabled={redeem.status === "redeeming"}
                       className="rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-indigo-500 disabled:opacity-40"
                     >
-                      {redeem.status === "redeeming" ? "Relaying…" : "② Pay authors now (gasless · 1Shot) →"}
+                      {redeem.status === "redeeming" ? "Relaying…" : "② Pay authors (gasless · 1Shot) →"}
+                    </button>
+                    <button
+                      onClick={handlePayDirect}
+                      disabled={payDirect.status === "approving" || payDirect.status === "paying"}
+                      title="Pay authors straight from your wallet via attestAndSplit — no relayer, no relayer fee (you pay gas in ETH)"
+                      className="rounded-lg border border-indigo-300 px-4 py-2.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-40 dark:border-indigo-800 dark:hover:bg-indigo-950/30"
+                    >
+                      {payDirect.status === "approving"
+                        ? "Approving…"
+                        : payDirect.status === "paying"
+                          ? "Paying…"
+                          : "② alt · Pay directly (no relayer)"}
                     </button>
                   </div>
+                  {payDirect.status === "done" ? (
+                    <p className="mt-2 text-[11px] text-emerald-600">
+                      ✓ Authors paid directly on-chain —{" "}
+                      <a href={`https://sepolia.etherscan.io/tx/${payDirect.tx}`} target="_blank" rel="noreferrer" className="underline">
+                        view tx
+                      </a>
+                      .
+                    </p>
+                  ) : null}
+                  {payDirect.status === "error" ? <p className="mt-2 text-[11px] text-red-600">{payDirect.message}</p> : null}
                   <p className="mt-2 rounded-md bg-[var(--paper)] px-3 py-2 text-[11px] leading-relaxed text-[var(--ink)]/70">
                     ℹ️ <b>No double payment.</b> ① <b>Records</b> who is owed on-chain (the auditable receipt) — it
-                    doesn’t move money to wallets. ② is the <b>one</b> USDC payment, relayed gasless by 1Shot.
-                    Authors without a wallet yet have their share held in escrow to <b>claim</b> later with ORCID —
-                    each author is settled <b>once</b>, never twice.
+                    doesn’t move money. ② is the <b>one</b> USDC payment — pick <b>either</b> rail: gasless via the
+                    <b> 1Shot</b> relayer, <b>or</b> pay <b>directly</b> from your wallet (no relayer, no relayer
+                    fee). Authors without a wallet yet have their share escrowed to <b>claim</b> later with ORCID —
+                    each author is settled <b>once</b>.
                   </p>
 
                   {/* Export: optional Venice + sharing extras. */}

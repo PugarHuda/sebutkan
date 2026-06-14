@@ -160,7 +160,16 @@ export async function revokeBudget(
   userWallet: WalletClient,
   args: { permissionContext: unknown; delegationManager: `0x${string}`; chainId?: number },
 ): Promise<`0x${string}`> {
-  const delegations = decodeDelegations(args.permissionContext as never) as unknown[];
+  // decodeDelegations wants the hex permissionsContext string. The granted value
+  // is an array of { context: "0x…", delegationManager, … } — pull the hex out
+  // (accept a raw hex string too for flexibility).
+  const ctx = args.permissionContext;
+  const hex =
+    typeof ctx === "string"
+      ? (ctx as `0x${string}`)
+      : (Array.isArray(ctx) ? (ctx[0] as { context?: `0x${string}` })?.context : undefined);
+  if (!hex) throw new Error("permission context hex not found");
+  const delegations = decodeDelegations(hex as never) as unknown[];
   if (!delegations.length) throw new Error("No delegation found in permission context");
   const account = userWallet.account;
   if (!account) throw new Error("Wallet has no account");
