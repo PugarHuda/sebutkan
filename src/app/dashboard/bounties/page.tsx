@@ -190,8 +190,17 @@ export default function BountiesPage() {
                       Open in Research →
                     </Link>
                   ) : null}
-                  <a href={`https://sepolia.etherscan.io/tx/${b.txHash}`} target="_blank" rel="noreferrer" className="hover:text-[var(--accent)] hover:underline">
-                    tx ↗
+                  <a
+                    href={
+                      b.txHash
+                        ? `https://sepolia.etherscan.io/tx/${b.txHash}`
+                        : `https://sepolia.etherscan.io/address/${BOUNTY_MARKET}`
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-[var(--accent)] hover:underline"
+                  >
+                    {b.txHash ? "tx ↗" : "contract ↗"}
                   </a>
                 </div>
               </div>

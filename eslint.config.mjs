@@ -13,6 +13,14 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    // Mount-time data loads (localStorage history, on-chain reads, /api fetches)
+    // legitimately setState in an effect. The React-Compiler rule flags these as
+    // a perf hint; we keep it as a warning, not a hard error.
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;
