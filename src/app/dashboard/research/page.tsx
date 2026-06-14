@@ -65,6 +65,11 @@ const SESSION_ACCOUNT =
   (process.env.NEXT_PUBLIC_SESSION_ACCOUNT as `0x${string}`) ??
   "0x000000000000000000000000000000000000dEaD";
 
+/** Operator that settles a prefunded (Kutip-style upfront) pool to authors. */
+const OPERATOR_ADDRESS =
+  (process.env.NEXT_PUBLIC_OPERATOR_ADDRESS as `0x${string}`) ??
+  "0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E";
+
 const RESEARCH_STEPS = [
   "Search corpus",
   "Purchase via x402",
@@ -96,6 +101,14 @@ export default function ResearchPage() {
 
   const [excludeSeen, setExcludeSeen] = useState(true);
   const [autoPay, setAutoPay] = useState(false);
+  const [prefund, setPrefund] = useState(false);
+  const [prefundState, setPrefundState] = useState<{
+    status: "idle" | "locking" | "locked" | "splitting" | "done" | "error";
+    lockTx?: string;
+    splitTx?: string;
+    amount6?: bigint;
+    message?: string;
+  }>({ status: "idle" });
   const [relayChain, setRelayChain] = useState<number>(PERMISSION_CHAIN.id);
   const [query, setQuery] = useState("");
   const [papers, setPapers] = useState(5);
@@ -224,11 +237,19 @@ export default function ResearchPage() {
   // Auto-pay: when enabled, settle authors directly the moment research finishes —
   // honouring the budget you already committed when granting (opt-in, off by default).
   useEffect(() => {
-    if (research.status === "done" && autoPay && payDirect.status === "idle" && redeem.status === "idle") {
+    if (research.status === "done" && autoPay && !prefund && payDirect.status === "idle" && redeem.status === "idle") {
       handlePayDirect();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [research.status, autoPay]);
+
+  // Prefund (Kutip-style): the locked pool auto-splits to authors when the run ends.
+  useEffect(() => {
+    if (research.status === "done" && prefund && prefundState.status === "locked") {
+      handlePrefundSplit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [research.status, prefundState.status]);
 
   // Surface whether this query was already settled on-chain (re-settle is blocked
   // to prevent double-paying authors) — so the Settle buttons can say so upfront.
@@ -238,7 +259,7 @@ export default function ResearchPage() {
       return;
     }
     // Just settled this session → reflect immediately (no need to wait for a read).
-    if (settle.status === "done" || payDirect.status === "done") {
+    if (settle.status === "done" || payDirect.status === "done" || prefundState.status === "done") {
       setAlreadyAttested(true);
       return;
     }
@@ -255,7 +276,7 @@ export default function ResearchPage() {
       .then((v) => setAlreadyAttested(Boolean(v)))
       .catch(() => setAlreadyAttested(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [research.status, publicClient, settle.status, payDirect.status]);
+  }, [research.status, publicClient, settle.status, payDirect.status, prefundState.status]);
 
   async function handleRedeem() {
     if (research.status !== "done") return;
@@ -512,18 +533,88 @@ export default function ResearchPage() {
     return false;
   }
 
-  /** Kutip-style "Grant & research" — grant the budget first (if needed), then run. */
+  /**
+   * "Grant/Lock & research" — one click from the Ask box.
+   * - prefund OFF (default, non-custodial): grant the ERC-7715 budget if needed, then run.
+   * - prefund ON (Kutip-style upfront): transfer the author pool to the operator NOW
+   *   (locks it), then run; authors are auto-split from that pool when the run finishes.
+   */
   async function handleAsk() {
     if (!query.trim()) return;
-    if (grant.status !== "granted") {
-      if (!isConnected) {
-        setResearch({ status: "error", message: "Connect MetaMask Flask first." });
-        return;
+    if (!isConnected) {
+      setResearch({ status: "error", message: "Connect MetaMask Flask first." });
+      return;
+    }
+    if (prefund) {
+      if (prefundState.status !== "locked" && prefundState.status !== "done") {
+        const wc = await resolveWalletClient();
+        if (!wc || !wc.account) {
+          setPrefundState({ status: "error", message: "Wallet not ready — reconnect MetaMask Flask." });
+          return;
+        }
+        const amount6 = BigInt(Math.round(perDay * 1e6));
+        setPrefundState({ status: "locking", amount6 });
+        try {
+          const lockTx = await wc.writeContract({
+            address: USDC[PERMISSION_CHAIN.id],
+            abi: erc20Abi,
+            functionName: "transfer",
+            args: [OPERATOR_ADDRESS, amount6],
+            account: wc.account,
+            chain: wc.chain,
+          });
+          await publicClient?.waitForTransactionReceipt({ hash: lockTx });
+          setPrefundState({ status: "locked", lockTx, amount6 });
+        } catch (e) {
+          const raw = e instanceof Error ? e.message : String(e);
+          setPrefundState({
+            status: "error",
+            message: /insufficient|exceeds balance/i.test(raw)
+              ? "Not enough USDC to lock the author pool. Lower the budget or fund your wallet."
+              : /unauthorized|json-rpc protocol|in-flight/i.test(raw)
+                ? "Your wallet rejected the lock (delegated account / RPC). Try a fresh wallet."
+                : raw,
+          });
+          return;
+        }
       }
+    } else if (grant.status !== "granted") {
       const ok = await handleGrant();
       if (!ok) return; // grant failed/declined — error already shown
     }
     await handleResearch();
+  }
+
+  /** Operator splits the prefunded pool to authors (auto-fires after a prefunded run). */
+  async function handlePrefundSplit() {
+    if (research.status !== "done" || !prefundState.amount6) return;
+    setPrefundState((s) => ({ ...s, status: "splitting" }));
+    try {
+      const ledger =
+        (process.env.NEXT_PUBLIC_ATTRIBUTION_LEDGER as string) ?? "0x0000000000000000000000000000000000000000";
+      const res = await fetch("/api/settle", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          query: research.result.query,
+          amountUSDC6: prefundState.amount6.toString(),
+          payouts: research.result.payouts,
+          ledger,
+          mode: "split",
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+      setPrefundState((s) => ({ ...s, status: "done", splitTx: json.txHash }));
+      recordAgentFeedback();
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : String(e);
+      setPrefundState((s) => ({
+        ...s,
+        status: "error",
+        message: /0x35d90805|alreadyattested/i.test(raw) ? "This query was already settled on-chain." : raw,
+      }));
+    }
   }
 
   /** Cancel the active budget on-chain (disableDelegation on the DelegationManager). */
@@ -848,16 +939,27 @@ export default function ResearchPage() {
           />
           <button
             onClick={handleAsk}
-            disabled={research.status === "running" || grant.status === "granting" || !query.trim()}
+            disabled={
+              research.status === "running" ||
+              grant.status === "granting" ||
+              prefundState.status === "locking" ||
+              !query.trim()
+            }
             className="shrink-0 rounded-lg bg-[var(--accent)] px-5 py-2.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-40"
           >
             {research.status === "running"
               ? "Researching…"
-              : grant.status === "granting"
-                ? "Granting…"
-                : grant.status === "granted"
-                  ? "❝ Research"
-                  : `Grant ${perDay} USDC & research`}
+              : prefundState.status === "locking"
+                ? "Locking…"
+                : grant.status === "granting"
+                  ? "Granting…"
+                  : prefund
+                    ? prefundState.status === "locked" || prefundState.status === "done"
+                      ? "❝ Research"
+                      : `🔒 Lock ${perDay} USDC & research`
+                    : grant.status === "granted"
+                      ? "❝ Research"
+                      : `Grant ${perDay} USDC & research`}
           </button>
         </div>
 
@@ -937,6 +1039,7 @@ export default function ResearchPage() {
             <input
               type="checkbox"
               checked={autoPay}
+              disabled={prefund}
               onChange={(e) => setAutoPay(e.target.checked)}
               className="mt-0.5 h-3.5 w-3.5 accent-[var(--accent)]"
             />
@@ -944,6 +1047,23 @@ export default function ResearchPage() {
               <span className="font-medium">Auto-pay authors when research finishes</span>
               <span className="block text-[10px] text-[var(--muted)]">
                 Settles directly on-chain (no relayer) right after each run — honours the budget you committed at grant time
+              </span>
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-2.5 text-[11px] text-[var(--ink)]/80">
+            <input
+              type="checkbox"
+              checked={prefund}
+              onChange={(e) => setPrefund(e.target.checked)}
+              className="mt-0.5 h-3.5 w-3.5 accent-[var(--accent)]"
+            />
+            <span>
+              <span className="font-medium">Lock the budget upfront (Kutip-style) </span>
+              <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">custodial</span>
+              <span className="block text-[10px] text-[var(--muted)]">
+                Pay-and-research: locks {perDay} USDC to the operator now, then auto-splits it to cited authors when the run
+                finishes. (Default is non-custodial — funds stay in your wallet until the split.)
               </span>
             </span>
           </label>
@@ -1012,6 +1132,32 @@ export default function ResearchPage() {
               {" "}— the grant is a <span className="font-medium">ceiling</span>, never charged up-front. Unused budget stays in your wallet (≈{" "}
               {Math.max(0, Math.floor(perDay / 0.01))} more runs today at 0.01 USDC each).
             </p>
+            {prefund && prefundState.status !== "idle" ? (
+              <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                🔒 <b>Upfront pool (Kutip-style):</b>{" "}
+                {prefundState.status === "locking"
+                  ? "locking USDC…"
+                  : prefundState.status === "locked"
+                    ? `${prefundState.amount6 ? (Number(prefundState.amount6) / 1e6).toFixed(2) : ""} USDC locked — splitting to authors…`
+                    : prefundState.status === "splitting"
+                      ? "splitting the locked pool to authors…"
+                      : prefundState.status === "done"
+                        ? "✓ split to cited authors"
+                        : prefundState.message ?? "error"}
+                {prefundState.lockTx ? (
+                  <>
+                    {" · "}
+                    <a href={`https://sepolia.etherscan.io/tx/${prefundState.lockTx}`} target="_blank" rel="noreferrer" className="underline">lock tx</a>
+                  </>
+                ) : null}
+                {prefundState.splitTx ? (
+                  <>
+                    {" · "}
+                    <a href={`https://sepolia.etherscan.io/tx/${prefundState.splitTx}`} target="_blank" rel="noreferrer" className="underline">split tx</a>
+                  </>
+                ) : null}
+              </p>
+            ) : null}
             {research.result.searchTerms && research.result.searchTerms.toLowerCase() !== research.result.query.trim().toLowerCase() ? (
               <p className="text-[11px] text-[var(--muted)]">
                 🔎 Searched OpenAlex (real 250M-paper index) for:{" "}
@@ -1356,9 +1502,9 @@ export default function ResearchPage() {
               <div className="mt-4">
                 <DownloadableReceipt
                   result={research.result}
-                  // "Paid" only after an actual PAYMENT (direct or 1Shot) — the
-                  // record-only attestation (①) doesn't move money to authors.
-                  settled={payDirect.status === "done" || redeem.status === "done"}
+                  // "Paid" only after an actual PAYMENT (direct, 1Shot, or prefund
+                  // split) — the record-only attestation (①) doesn't move money.
+                  settled={payDirect.status === "done" || redeem.status === "done" || prefundState.status === "done"}
                 />
                 {receipt.status === "generating" ||
                 (receipt.status === "done" && (receipt.image || receipt.audioBase64)) ? (

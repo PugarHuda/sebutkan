@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { operatorAttest, queryIdOf } from "@/lib/settlement";
+import { operatorAttest, operatorAttestAndSplit, queryIdOf } from "@/lib/settlement";
 import { escrowUnclaimed } from "@/lib/escrow";
 import { getChainCapabilities } from "@/lib/oneshot";
 import { PERMISSION_CHAIN } from "@/lib/chains";
@@ -22,6 +22,8 @@ type Body = {
   payouts: CitationPayout[];
   ledger: `0x${string}`;
   chainId?: number;
+  /** "split" = operator pays authors from a PRE-FUNDED pool (Kutip-style upfront). */
+  mode?: "attest" | "split";
 };
 
 export async function POST(req: Request) {
@@ -54,7 +56,25 @@ export async function POST(req: Request) {
     relayer = null;
   }
 
-  // Real on-chain attestation.
+  // Prefunded split (Kutip-style upfront): the operator already holds the locked
+  // USDC and splits it to authors in one tx (records attestation + transfers).
+  if (body.mode === "split") {
+    try {
+      const txHash = await operatorAttestAndSplit({ ledger: body.ledger, query: body.query, amount: total, payouts: body.payouts });
+      return NextResponse.json({
+        mode: "split",
+        queryId,
+        txHash,
+        explorer: `https://sepolia.etherscan.io/tx/${txHash}`,
+        chain: PERMISSION_CHAIN.name,
+        relayer,
+      });
+    } catch (e) {
+      return NextResponse.json({ error: e instanceof Error ? e.message : String(e), queryId, relayer }, { status: 502 });
+    }
+  }
+
+  // Real on-chain attestation (record-only).
   try {
     const txHash = await operatorAttest({
       ledger: body.ledger,

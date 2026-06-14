@@ -5,11 +5,11 @@
  * and packages it as an Execution that a session account redeems under its
  * ERC-7710 delegation — gasless on mainnet via the 1Shot relayer.
  */
-import { createWalletClient, encodeFunctionData, http, keccak256, toHex, type Address } from "viem";
+import { createPublicClient, createWalletClient, encodeFunctionData, erc20Abi, http, keccak256, toHex, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { CitationPayout } from "./agent";
 import type { Execution7710 } from "./oneshot";
-import { PERMISSION_CHAIN } from "./chains";
+import { PERMISSION_CHAIN, USDC } from "./chains";
 
 const CITES_COMPONENT = {
   name: "cites",
@@ -105,6 +105,45 @@ export async function operatorAttest(args: {
     abi: ATTRIBUTION_LEDGER_ABI,
     functionName: "attest",
     args: [queryIdOf(args.query), args.total, cites],
+  });
+}
+
+/**
+ * Operator splits a PRE-FUNDED pool to the cited authors (Kutip-style upfront).
+ * The user locked USDC by transferring it to the operator at the start; here the
+ * operator approves the ledger and calls `attestAndSplit`, which records the
+ * attestation AND transfers each author their weighted share — from the operator's
+ * (now prefunded) balance. Gasless for the user (operator pays gas). Returns tx.
+ */
+export async function operatorAttestAndSplit(args: {
+  ledger: `0x${string}`;
+  query: string;
+  amount: bigint;
+  payouts: CitationPayout[];
+}): Promise<`0x${string}`> {
+  const opKey = process.env.OPERATOR_PRIVATE_KEY as `0x${string}` | undefined;
+  if (!opKey) throw new Error("OPERATOR_PRIVATE_KEY not configured");
+  const rpc = process.env.NEXT_PUBLIC_SEPOLIA_RPC ?? "https://ethereum-sepolia-rpc.publicnode.com";
+  const account = privateKeyToAccount(opKey);
+  const wallet = createWalletClient({ account, chain: PERMISSION_CHAIN, transport: http(rpc) });
+  const pub = createPublicClient({ chain: PERMISSION_CHAIN, transport: http(rpc) });
+  const usdcAddr = USDC[PERMISSION_CHAIN.id];
+
+  // The operator must hold the prefunded amount + approve the ledger to pull it.
+  const bal = (await pub.readContract({ address: usdcAddr, abi: erc20Abi, functionName: "balanceOf", args: [account.address] })) as bigint;
+  if (bal < args.amount) throw new Error(`operator prefund balance ${bal} < ${args.amount} — was the lock transfer confirmed?`);
+  const allowance = (await pub.readContract({ address: usdcAddr, abi: erc20Abi, functionName: "allowance", args: [account.address, args.ledger] })) as bigint;
+  if (allowance < args.amount) {
+    const apTx = await wallet.writeContract({ address: usdcAddr, abi: erc20Abi, functionName: "approve", args: [args.ledger, args.amount] });
+    await pub.waitForTransactionReceipt({ hash: apTx });
+  }
+
+  const cites = args.payouts.map((p) => ({ author: p.author as Address, weightBps: p.weightBps }));
+  return wallet.writeContract({
+    address: args.ledger,
+    abi: ATTRIBUTION_LEDGER_ABI,
+    functionName: "attestAndSplit",
+    args: [queryIdOf(args.query), args.amount, cites],
   });
 }
 
