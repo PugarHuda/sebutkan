@@ -1,0 +1,31 @@
+1
+00:00:00,000 --> 00:00:12,000
+This is Sebutkan — live. An AI research agent that pays the human authors it cites.
+
+2
+00:00:12,000 --> 00:00:40,000
+I connect MetaMask Flask on Sepolia, pick a budget — half a USDC for this grant — and sign one ERC-7715 permission. Nothing leaves my wallet; it's a cap.
+
+3
+00:00:40,000 --> 00:01:20,000
+The agent searches OpenAlex's 250-million-paper index, then five agents — Planner, parallel Readers, a Citation-Matcher, a Fact-checker, a Summarizer — reason with Venice. Watch the redelegation hops and the fact-check pass.
+
+4
+00:01:20,000 --> 00:01:40,000
+Every cited author gets a weighted USDC share, ranked by Venice embeddings — with clickable citations.
+
+5
+00:01:40,000 --> 00:02:05,000
+One click. attestAndSplit records the attestation and pays each author in a single transaction — no relayer fee, no double-pay. Here's the transaction on Etherscan.
+
+6
+00:02:05,000 --> 00:02:20,000
+An on-brand citation receipt, a Venice image and spoken briefing — and the agents earn on-chain reputation.
+
+7
+00:02:20,000 --> 00:02:45,000
+Authors claim their earnings: prove their ORCID, bind their wallet, withdraw — plus a twelve-percent loyalty yield that ticks up live.
+
+8
+00:02:45,000 --> 00:03:00,000
+Every payment, public on-chain. Sebutkan — an agent that cites and pays its sources. Try it at sebutkan.vercel.app.

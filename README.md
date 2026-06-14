@@ -97,7 +97,9 @@ Next.js app ── /research
 
 ## Docs
 
-- **[Live docs](https://sebutkan.vercel.app/docs)** — overview, agent mesh, rewards, all contracts, API, on-chain proof
+- **[Live docs](https://sebutkan.vercel.app/docs)** — overview, agent mesh, earnings, all contracts, API, on-chain proof
+- **[Pitch deck](https://sebutkan.vercel.app/slide)** — self-playing **narrated** deck with on-screen subtitles (press **▶ Play** / **P**)
+- **[VIDEO.md](./VIDEO.md)** — how to record the pitch + demo videos; subtitles in `public/pitch.srt`, `public/pitch.vtt`, `public/demo.srt`
 - **[SUBMISSION.md](./SUBMISSION.md)** — per-track qualification (copy into each HackQuest track)
 - **[STORYBOARD.md](./STORYBOARD.md)** — per-scene demo video script
 - **[ONESHOT-MAINNET.md](./ONESHOT-MAINNET.md)** — run the 1Shot mainnet 7710+7702 relay

@@ -249,22 +249,89 @@ const SLIDES: { id: string; render: React.ReactNode }[] = [
   },
 ];
 
+/** Voiceover narration per slide (also rendered as on-screen subtitles). */
+const NARRATION: Record<string, string> = {
+  title:
+    "Sebutkan — the research agent that cites and pays its sources. Built for the MetaMask Smart Accounts Kit, 1Shot, and Venice AI Dev Cook-Off.",
+  problem:
+    "Here's the problem. A.I. scrapes humanity's research and pays the authors nothing. Every model is built on papers and writing by real people who are never cited, credited, or paid. The incentive to share knowledge quietly erodes.",
+  solution:
+    "Our solution: an agent that cites and pays. You grant one scoped budget. Sebutkan buys the papers it needs, reads them with Venice, and splits U.S.D.C. back to every author it cites — gasless, non-custodial, and recorded on-chain. Every citation becomes a payment.",
+  permission:
+    "It starts with one signature. A single E.R.C. seventy-seven-fifteen Advanced Permission, via the MetaMask Smart Accounts Kit: up to ten U.S.D.C. for a twenty-four hour grant. A hard cap that auto-expires. You keep full custody — no blanket approval, no per-action popups.",
+  mesh:
+    "Under the hood it's a mesh, not a script. The Researcher redelegates strictly narrower budgets using E.R.C. seventy-seven-ten — authority only ever shrinks. A Planner splits the question, a Reader fan-out answers in parallel, a Citation-Matcher weights who gets paid, and a Fact-checker can reject and force a revision. Five real on-chain agents that earn reputation.",
+  venice:
+    "The agents' brain is Venice — private and uncensored. Five Venice endpoints in the main flow: chat, web search, embeddings, image, and text-to-speech. The embeddings don't just deduplicate — they weight who gets paid.",
+  pay:
+    "Then authors get paid — gasless, on mainnet. The agent pays for papers via x-four-oh-two. Payouts relay through 1Shot on Base mainnet with an E.I.P. seventy-seven-oh-two account upgrade, gas paid in U.S.D.C. Every citation's share is recorded on-chain, and the contract blocks double payment.",
+  settlement:
+    "And it's flexible. Non-custodial by default — funds stay in your wallet until the split. But you pick the rail: pay directly in one transaction with no relayer fee, relay gaslessly via 1Shot, escrow for an ORCID claim, or auto-pay on finish. We even offer a custodial, Kutip-style lock-upfront mode as an opt-in.",
+  proof:
+    "And it's all real. No mocks in the critical path. Six contracts live, a hundred and twelve tests green, five on-chain agents, and a real 1Shot relay executed on Base mainnet.",
+  tracks:
+    "One product covers every track: Best Agent, Best A2A coordination, Best x-four-oh-two and E.R.C. seventy-seven-ten, Best use of Venice A.I., and Best 1Shot Relayer.",
+  close:
+    "Sebutkan — an agent that pays the people it learns from. Try it live at sebutkan dot vercel dot app. Thank you.",
+};
+
 export default function SlideDeck() {
   const [i, setI] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [captions, setCaptions] = useState(true);
   const n = SLIDES.length;
   const go = useCallback((d: number) => setI((x) => Math.max(0, Math.min(n - 1, x + d))), [n]);
 
+  // Narrated playback: speak each slide's narration (browser TTS) + auto-advance.
+  const playFrom = useCallback(
+    (idx: number) => {
+      const synth = typeof window !== "undefined" ? window.speechSynthesis : undefined;
+      if (!synth) return;
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(NARRATION[SLIDES[idx].id] ?? "");
+      u.rate = 1.0;
+      u.pitch = 1.0;
+      u.onend = () => {
+        if (idx < n - 1) {
+          setI(idx + 1);
+          setTimeout(() => playFrom(idx + 1), 450);
+        } else {
+          setPlaying(false);
+        }
+      };
+      synth.speak(u);
+    },
+    [n],
+  );
+  const stopPlay = useCallback(() => {
+    setPlaying(false);
+    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+  }, []);
+  const togglePlay = useCallback(() => {
+    if (playing) {
+      stopPlay();
+    } else {
+      setPlaying(true);
+      playFrom(i);
+    }
+  }, [playing, stopPlay, playFrom, i]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); go(1); }
-      else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(-1); }
-      else if (e.key === "Home") setI(0);
-      else if (e.key === "End") setI(n - 1);
+      if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); stopPlay(); go(1); }
+      else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); stopPlay(); go(-1); }
+      else if (e.key === "Home") { stopPlay(); setI(0); }
+      else if (e.key === "End") { stopPlay(); setI(n - 1); }
       else if (e.key.toLowerCase() === "f") document.documentElement.requestFullscreen?.().catch(() => {});
+      else if (e.key.toLowerCase() === "p") { e.preventDefault(); togglePlay(); }
+      else if (e.key.toLowerCase() === "c") setCaptions((v) => !v);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, n]);
+  }, [go, n, stopPlay, togglePlay]);
+
+  // Stop any speech when leaving the deck.
+  useEffect(() => () => { if (typeof window !== "undefined") window.speechSynthesis?.cancel(); }, []);
 
   return (
     <main className="relative flex h-dvh w-full flex-col overflow-hidden bg-[var(--paper)]">
@@ -279,9 +346,36 @@ export default function SlideDeck() {
         <div key={SLIDES[i].id} className="slide-in w-full max-w-4xl">{SLIDES[i].render}</div>
       </section>
 
+      {/* Caption / subtitle bar */}
+      {captions ? (
+        <div className="relative z-20 mx-auto mb-2 w-full max-w-3xl px-6">
+          <p
+            key={`cap-${i}`}
+            className={`slide-in rounded-lg bg-black/80 px-4 py-2.5 text-center text-sm leading-snug text-white shadow-lg ${
+              playing ? "ring-1 ring-[var(--accent)]/60" : ""
+            }`}
+          >
+            {NARRATION[SLIDES[i].id]}
+          </p>
+        </div>
+      ) : null}
+
       {/* Footer / nav */}
-      <div className="relative z-20 flex items-center justify-between px-6 py-4 text-xs text-[var(--muted)]">
-        <Link href="/" className="link-accent hover:text-[var(--accent)]">← exit</Link>
+      <div className="relative z-20 flex items-center justify-between gap-3 px-6 py-4 text-xs text-[var(--muted)]">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="link-accent hover:text-[var(--accent)]">← exit</Link>
+          <button
+            onClick={togglePlay}
+            className={`rounded-full px-3 py-1 font-medium transition ${
+              playing ? "bg-red-500 text-white" : "bg-[var(--accent)] text-white"
+            }`}
+          >
+            {playing ? "⏸ Stop narration" : "▶ Play narrated"}
+          </button>
+          <button onClick={() => setCaptions((v) => !v)} className="hover:text-[var(--accent)]">
+            {captions ? "CC on" : "CC off"}
+          </button>
+        </div>
         <div className="flex items-center gap-1.5">
           {SLIDES.map((s, idx) => (
             <button
@@ -293,7 +387,7 @@ export default function SlideDeck() {
           ))}
         </div>
         <span className="font-mono tabular-nums">
-          {String(i + 1).padStart(2, "0")} / {String(n).padStart(2, "0")} · ←/→/F
+          {String(i + 1).padStart(2, "0")} / {String(n).padStart(2, "0")} · ←/→ · P play · C cc · F full
         </span>
       </div>
 
