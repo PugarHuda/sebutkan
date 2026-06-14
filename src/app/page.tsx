@@ -1,54 +1,74 @@
 import Link from "next/link";
 import { LandingStats } from "@/components/LandingStats";
+import { ReceiptPeek } from "@/components/ReceiptPeek";
 
 export default function Home() {
   return (
     <div className="relative flex flex-1 flex-col items-center overflow-hidden px-6 py-20">
       <div className="paper-grid pointer-events-none absolute inset-0 -z-10" />
 
-      {/* Hero */}
-      <section className="w-full max-w-2xl text-center">
-        <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-          MetaMask Smart Accounts · 1Shot · Venice AI
-        </p>
-        <div className="mt-7 flex items-center justify-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.svg" alt="Sebutkan logo" width={48} height={48} />
-          <h1 className="serif text-6xl font-semibold tracking-tight sm:text-7xl">Sebutkan</h1>
-        </div>
-        <p className="mx-auto mt-6 max-w-xl text-balance text-lg leading-relaxed text-[var(--ink)]/85">
-          The research agent that cites{" "}
-          <span className="serif italic text-[var(--accent)]">and pays</span> its sources. Grant one
-          scoped budget — it buys papers, reads them with Venice, and splits USDC back to every
-          author it cites. Author payouts are gasless (relayed by 1Shot). Non-custodial.
-        </p>
+      {/* Hero — text + a live product peek, side by side on desktop */}
+      <section className="grid w-full max-w-5xl items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+        {/* Left: copy */}
+        <div className="fade-up text-center lg:text-left">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 lg:justify-start">
+            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+              MetaMask Smart Accounts · 1Shot · Venice AI
+            </p>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-2.5 py-0.5 text-[10px] font-medium text-[var(--accent)]">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent)]" />
+              live on Sepolia
+            </span>
+          </div>
 
-        <LandingStats />
+          <div className="relative mt-6 flex items-center justify-center gap-3 lg:justify-start">
+            <div className="hero-glow pointer-events-none absolute -left-6 -top-4 h-28 w-44" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="Sebutkan logo" width={48} height={48} className="relative" />
+            <h1 className="serif relative text-6xl font-semibold tracking-tight sm:text-7xl">Sebutkan</h1>
+          </div>
 
-        <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href="/dashboard"
-            className="rounded-md bg-[var(--accent)] px-6 py-3 text-sm font-medium text-white transition hover:opacity-90"
-          >
-            Open the dashboard →
-          </Link>
-          <Link
-            href="/dashboard/claim"
-            className="rounded-md border border-[var(--rule)] px-6 py-3 text-sm font-medium transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-          >
-            Claim your wallet (authors)
-          </Link>
+          <p className="mx-auto mt-6 max-w-xl text-balance text-lg leading-relaxed text-[var(--ink)]/85 lg:mx-0">
+            The research agent that cites{" "}
+            <span className="serif italic text-[var(--accent)]">and pays</span> its sources. Grant one
+            scoped budget — it buys papers, reads them with Venice, and splits USDC back to every
+            author it cites. Author payouts are gasless (relayed by 1Shot). Non-custodial.
+          </p>
+
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+            <Link
+              href="/dashboard"
+              className="group rounded-md bg-[var(--accent)] px-6 py-3 text-sm font-medium text-white transition hover:opacity-90"
+            >
+              Open the dashboard <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
+            </Link>
+            <Link
+              href="/dashboard/claim"
+              className="rounded-md border border-[var(--rule)] px-6 py-3 text-sm font-medium transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              Claim your wallet (authors)
+            </Link>
+          </div>
+          <div className="mt-5 flex items-center justify-center gap-2 text-[11px] text-[var(--muted)] lg:justify-start">
+            <span>New here?</span>
+            <Link
+              href="/docs"
+              className="inline-flex items-center gap-1 rounded-full border border-[var(--rule)] px-3 py-1 font-medium text-[var(--ink)]/80 transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              📖 Read the docs
+            </Link>
+          </div>
         </div>
-        <div className="mt-5 flex items-center justify-center gap-2 text-[11px] text-[var(--muted)]">
-          <span>New here?</span>
-          <Link
-            href="/docs"
-            className="inline-flex items-center gap-1 rounded-full border border-[var(--rule)] px-3 py-1 font-medium text-[var(--ink)]/80 transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-          >
-            📖 Read the docs
-          </Link>
+
+        {/* Right: product peek */}
+        <div className="fade-up flex justify-center lg:justify-end" style={{ animationDelay: "0.12s" }}>
+          <ReceiptPeek />
         </div>
       </section>
+
+      <div className="fade-up" style={{ animationDelay: "0.2s" }}>
+        <LandingStats />
+      </div>
 
       <hr className="my-16 w-full max-w-2xl border-[var(--rule)]" />
 
