@@ -80,7 +80,8 @@ const SLIDES: { id: string; render: React.ReactNode }[] = [
         </h2>
         <p className="mt-5 text-lg leading-relaxed text-[var(--ink)]/75">
           A single <b>ERC-7715 Advanced Permission</b> via the MetaMask Smart Accounts Kit:
-          <span className="text-[var(--accent)]"> &ldquo;max 10 USDC/day, expires in 24h.&rdquo;</span>
+          <span className="text-[var(--accent)]"> &ldquo;up to 10 USDC for this 24-hour grant.&rdquo;</span>{" "}
+          The cap and the window are one number — the agent draws ~0.01 USDC per paper and never exceeds it.
         </p>
         <div className="mt-6 flex flex-wrap gap-2 text-sm">
           {["Hard cap", "Auto-expiry", "Full custody", "No blanket approval", "No per-action popups"].map((t) => (
@@ -151,8 +152,33 @@ const SLIDES: { id: string; render: React.ReactNode }[] = [
         <ul className="mt-5 space-y-3 text-base text-[var(--ink)]/80">
           <li>💸 <b>x402</b> — the agent pays a real USDC micropayment to unlock papers, verified on-chain.</li>
           <li>⛽ <b>1Shot</b> — payouts relayed gaslessly on <b>Base mainnet</b> with an <b>EIP-7702</b> account upgrade. Gas paid in USDC.</li>
-          <li>📜 <b>On-chain attestation</b> — every citation&apos;s owed share recorded in AttributionLedger.</li>
+          <li>📜 <b>On-chain attestation</b> — <i>attestAndSplit</i> records who&apos;s owed <b>and</b> pays them in one tx. The contract blocks re-attesting, so each author is paid <b>once</b>.</li>
           <li>🪪 <b>ORCID claim</b> — unclaimed shares wait in escrow until the author binds their wallet. Zero gas for them.</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
+    id: "settlement",
+    render: (
+      <div className="w-full max-w-2xl">
+        <Kicker>Four ways to settle · one product</Kicker>
+        <h2 className="serif mt-4 text-4xl font-semibold leading-tight">Non-custodial by default. Pay your way.</h2>
+        <p className="mt-4 text-base text-[var(--ink)]/75">
+          The 7715 grant keeps custody in <b>your</b> wallet until the split — but you choose the rail:
+        </p>
+        <ul className="mt-4 space-y-2 text-sm">
+          {[
+            ["Direct (primary)", "attestAndSplit — records + pays in one tx, no relayer fee"],
+            ["1Shot relay", "gasless, gas paid in USDC (Sepolia or Base Sepolia)"],
+            ["Escrow → ORCID", "hold unclaimed shares for authors to claim later"],
+            ["Auto-pay / Upfront", "settle on finish, or lock the pool first (Kutip-style)"],
+          ].map(([t, d]) => (
+            <li key={t} className="flex items-baseline justify-between gap-3 rounded-md bg-[var(--paper-2)] px-4 py-2.5">
+              <span className="font-medium text-[var(--accent)]">{t}</span>
+              <span className="text-right text-[var(--muted)]">{d}</span>
+            </li>
+          ))}
         </ul>
       </div>
     ),
@@ -165,9 +191,9 @@ const SLIDES: { id: string; render: React.ReactNode }[] = [
         <h2 className="serif mt-4 text-4xl font-semibold leading-tight">No mocks in the critical path.</h2>
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat v="6" k="contracts live" />
-          <Stat v="82" k="tests green" />
+          <Stat v="112" k="tests green" />
           <Stat v="5" k="on-chain agents" />
-          <Stat v="1" k="mainnet 1Shot relay" />
+          <Stat v="19+" k="on-chain attestations" />
         </div>
         <p className="mt-6 text-sm text-[var(--ink)]/75">
           1Shot 7710 + 7702 relay on Base:{" "}

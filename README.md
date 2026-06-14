@@ -18,7 +18,7 @@ Built for the **MetaMask Smart Accounts Kit × 1Shot API × Venice AI Dev Cook-O
 [`BountyMarket`](https://sepolia.etherscan.io/address/0xeC274B5B770e24B0Aef8aF75EAAa7fC9CF7DF5c6) `0xeC27…F5c6` ·
 [`ShareRegistry`](https://sepolia.etherscan.io/address/0x52759E09d3C70ca281c59da3122a7AF8dFA51847) `0x5275…1847` ·
 [`CitationYield`](https://sepolia.etherscan.io/address/0x3Fdf80368d464078a4733B3b264457D009E5cfA3) `0x3Fdf…cfA3`
-(USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet). 100 tests (37 Foundry + 63 Vitest).
+(USDC `0x1c7D…7238`). 1Shot relay via `relayer.1shotapi.dev` (testnet) / `.com` (mainnet). 112 tests (37 Foundry + 75 Vitest).
 
 **Multi-agent orchestration (real A2A, 5 on-chain agents):** a **Planner** decomposes the question into
 focused sub-questions; the Researcher redelegates strictly-narrowed sub-budgets to a **Reader fan-out**
@@ -51,8 +51,10 @@ permalink** (`/r/<id>`) — stored on-chain in ShareRegistry by default (zero-in
 
 Most "AI + crypto" agents either hold a blanket token approval or custody your funds.
 Sebutkan does neither. The user signs a single **ERC-7715 Advanced Permission** — a
-periodic USDC budget ("max N USDC/day, expires in 24h") — and the agent operates
-**within a cryptographically enforced cap** it can never exceed. It's an honest
+scoped USDC budget ("up to N USDC for this 24h grant"; the cap and the window are one
+number) — and the agent operates **within a cryptographically enforced cap** it can
+never exceed, with funds staying in your wallet until the split. (A custodial,
+Kutip-style "lock upfront" mode is offered as an explicit opt-in.) It's an honest
 answer to a real problem: AI systems scrape human knowledge and pay creators nothing.
 Sebutkan flips that — every citation is an on-chain payment to its author.
 
@@ -105,8 +107,9 @@ Next.js app ── /research
 ## Status
 
 ✅ Feature-complete. Six contracts live on Sepolia, a 1Shot 7710+7702 relay executed on Base
-mainnet (`0x6f4c8d53…`), the full agent mesh + x402 + ORCID + share links wired and deployed at
-https://sebutkan.vercel.app. 93 tests green. Remaining: record the demo video (`STORYBOARD.md`).
+mainnet (`0x6f4c8d53…`), the full agent mesh + x402 + ORCID + share links + four settlement
+rails wired and deployed at https://sebutkan.vercel.app. 112 tests green. Remaining: record the
+demo video (`STORYBOARD.md`).
 
 ## Getting started
 

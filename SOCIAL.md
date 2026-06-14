@@ -30,7 +30,7 @@ I wanted the opposite. Meet **Sebutkan** — the research agent that cites *and 
 **2/**
 The whole UX hinges on @MetaMaskDev **Advanced Permissions (ERC-7715)**.
 
-The user signs **once**: "max 10 USDC/day, expires in 24h." That's it. No per-action popups, no blanket approval, no custody. The agent operates inside a cryptographically enforced cap it *cannot* exceed.
+The user signs **once**: "up to 10 USDC for this 24h grant." That's it. No per-action popups, no blanket approval, no custody. The agent operates inside a cryptographically enforced cap it *cannot* exceed.
 
 This is the cleanest agent-permission UX I've used.
 

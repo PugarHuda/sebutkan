@@ -14,7 +14,7 @@ a real on-chain attestation of every citation and an A2A mesh of redelegated spe
 
 ## What it does (the flow a judge sees)
 
-1. **Grant once** — the user signs ONE **ERC-7715** Advanced Permission (a periodic USDC budget, e.g. "10 USDC/day, 24h"). The agent can never exceed it; the user keeps custody. (MetaMask Flask)
+1. **Grant once** — the user signs ONE **ERC-7715** Advanced Permission (a scoped USDC budget, e.g. "10 USDC for the 24h grant" — the cap and window are one number). The agent can never exceed it; the user keeps custody (a custodial Kutip-style "lock upfront" mode is an opt-in). (MetaMask Flask)
 2. **Agent mesh works** — the Researcher pays for the top paper via **x402** (on-chain USDC), then **redelegates** strictly narrower budgets (**ERC-7710**) to: a **Planner** (splits the question), a budget-scaled **Reader fan-out** (one per sub-question), a **Citation-Matcher** (Venice embeddings), a **Fact-checker** (can reject → force a revision), and a **Summarizer**. All reason with **Venice** (private + uncensored). Each agent is a real on-chain principal in the **ERC-8004** registry and earns reputation.
 3. **Authors are paid** — the citation payout is recorded on-chain (`AttributionLedger`) and settled to authors gaslessly via the **1Shot** relayer (or atomically via `attestAndSplit`, a real USDC transfer). Unclaimed shares wait in escrow until the author binds their **ORCID** + wallet.
 

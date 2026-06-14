@@ -21,12 +21,12 @@ browser zoom ~110%, MetaMask **Flask** in a clean profile. Live link: https://se
 - **Scores:** Qualification (MetaMask Advanced Permissions in the main flow).
 
 ### Scene 2 — Grant ONE permission (0:30–0:55) · x402 + 7710 setup
-- **Screen:** the top **progress stepper** (① Grant → ② Research → ③ Settle). Step 2 → set
-  "10 USDC/day, expires 24h" → **Grant budget** → Flask popup → sign.
-- **Say:** "I grant **one** ERC-7715 periodic-USDC permission. The agent operates inside a
+- **Screen:** the top **progress stepper** (① Grant → ② Research → ③ Settle). Step 2 → pick a
+  budget preset (or custom) → "10 USDC for the 24h grant" → **Grant budget** → Flask popup → sign.
+- **Say:** "I grant **one** ERC-7715 USDC permission. The agent operates inside a
   cryptographically enforced cap it can never exceed — no blanket approval, no custody."
-- **Show:** the **budget-status panel** — "Granted ceiling 10 USDC/day · live countdown · nothing
-  charged, this is a cap." (Expand *"View raw permission context"* for the JSON proof.) The setup
+- **Show:** the **budget-status panel** — "Granted budget 10 USDC for this window · live countdown ·
+  nothing charged, this is a cap." (Expand *"View raw permission context"* for the JSON proof.) The setup
   collapses to this compact panel once granted.
 - **Scores:** Best x402 + ERC-7710 (the 7715 grant → 7710 delegation).
 

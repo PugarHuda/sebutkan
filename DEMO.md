@@ -15,7 +15,7 @@ Show the landing page. One line: *non-custodial, gasless, one permission.*
 
 ### 0:25–1:10 — Qualification: ERC-7715 grant (MAIN FLOW)
 - Open `/research`, connect **MetaMask Flask** (Sepolia/Base Sepolia).
-- Set budget "10 USDC/day, expires 24h" → click **Grant budget**.
+- Pick a budget preset (or custom) — "10 USDC for the 24h grant" — → click **Grant budget**.
 - The Flask dialog appears → approve. Show the returned **permission context** JSON.
 - Say: *"One signature. An ERC-7715 Advanced Permission — an ERC-7710 delegation
   under the hood. The agent can never exceed this."*
