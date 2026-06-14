@@ -19,10 +19,25 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const DESCRIPTION =
+  "Grant one scoped permission; an AI agent buys papers, reads them with Venice, and splits USDC back to cited authors — gasless, non-custodial.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://sebutkan.vercel.app"),
   title: "Sebutkan — the research agent that pays its sources",
-  description:
-    "Grant one scoped permission; an AI agent buys papers, reads them with Venice, and splits USDC back to cited authors — gasless, non-custodial.",
+  description: DESCRIPTION,
+  openGraph: {
+    title: "Sebutkan — the research agent that cites and pays its sources",
+    description: DESCRIPTION,
+    url: "https://sebutkan.vercel.app",
+    siteName: "Sebutkan",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sebutkan — cites and pays its sources",
+    description: DESCRIPTION,
+  },
 };
 
 export default function RootLayout({

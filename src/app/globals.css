@@ -85,3 +85,54 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .fade-up, .float-soft { animation: none; }
 }
+
+/* ── Flying / scattered paper field (hero background) ─────────────────────── */
+.paper-sheet {
+  position: absolute;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  box-shadow: 0 8px 18px rgba(27, 26, 23, 0.06);
+  /* faint ruled lines, like notebook paper */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--rule) 70%, transparent) 0,
+    color-mix(in srgb, var(--rule) 70%, transparent) 1px,
+    transparent 1px,
+    transparent 8px
+  );
+  background-position: 0 9px;
+}
+/* folded top-right corner */
+.paper-sheet::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-width: 0 9px 9px 0;
+  border-style: solid;
+  border-color: var(--paper) var(--paper) var(--rule) var(--rule);
+  border-radius: 0 2px 0 3px;
+}
+/* gentle in-place float for scattered sheets */
+@keyframes paper-float {
+  0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+  50%      { transform: translateY(-16px) rotate(calc(var(--rot, 0deg) + 3deg)); }
+}
+.paper-float {
+  animation: paper-float var(--dur, 9s) ease-in-out var(--delay, 0s) infinite;
+}
+/* a sheet drifting across the hero and tumbling, then looping */
+@keyframes paper-fly {
+  0%   { transform: translate(0, 0) rotate(var(--rot, 0deg)); opacity: 0; }
+  8%   { opacity: var(--op, 0.12); }
+  92%  { opacity: var(--op, 0.12); }
+  100% { transform: translate(var(--dx, 60px), var(--dy, -120px)) rotate(calc(var(--rot, 0deg) + var(--dr, 90deg))); opacity: 0; }
+}
+.paper-fly {
+  animation: paper-fly var(--dur, 16s) linear var(--delay, 0s) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .paper-float, .paper-fly { animation: none; }
+  .paper-fly { opacity: var(--op, 0.1); }
+}

@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { LandingStats } from "@/components/LandingStats";
 import { ReceiptPeek } from "@/components/ReceiptPeek";
+import { FloatingPapers } from "@/components/FloatingPapers";
+import { Reveal } from "@/components/Reveal";
 
 export default function Home() {
   return (
     <div className="relative flex flex-1 flex-col items-center overflow-hidden px-6 py-20">
       <div className="paper-grid pointer-events-none absolute inset-0 -z-10" />
+      <FloatingPapers />
 
       {/* Hero — text + a live product peek, side by side on desktop */}
       <section className="grid w-full max-w-5xl items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
@@ -99,8 +102,8 @@ export default function Home() {
               tag: "1Shot · escrow",
             },
           ].map((s, i) => (
-            <div key={s.n} className="flex flex-1 items-stretch">
-              <div className="flex flex-1 flex-col rounded-xl border border-[var(--rule)] bg-[var(--paper-2)] p-5 text-left transition hover:border-[var(--accent)]/40">
+            <Reveal key={s.n} delay={i * 0.12} className="flex flex-1 items-stretch">
+              <div className="flex flex-1 flex-col rounded-xl border border-[var(--rule)] bg-[var(--paper-2)] p-5 text-left transition hover:-translate-y-0.5 hover:border-[var(--accent)]/40 hover:shadow-lg">
                 <div className="flex items-center gap-2.5">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent-soft)] text-lg">{s.icon}</span>
                   <div>
@@ -119,7 +122,27 @@ export default function Home() {
                   <span className="text-xl sm:hidden">↓</span>
                 </div>
               ) : null}
-            </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* Why it's different */}
+      <section className="mt-16 w-full max-w-4xl">
+        <p className="mb-6 text-center text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Why it&apos;s different</p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[
+            { icon: "🔒", t: "Non-custodial by default", d: "No blanket token approval, no custody. One ERC-7715 cap the agent can never exceed — funds stay in your wallet until the split." },
+            { icon: "🧠", t: "Private Venice brain", d: "Five Venice endpoints — chat, web search, embeddings, image, voice. Private and uncensored, so the agent can research anything." },
+            { icon: "⛓️", t: "Every citation is a payment", d: "AI scrapes human knowledge and pays nothing. Sebutkan flips that: each citation is a real on-chain USDC payment to its author." },
+          ].map((v, i) => (
+            <Reveal key={v.t} delay={i * 0.1}>
+              <div className="h-full rounded-xl border border-[var(--rule)] bg-[var(--paper-2)] p-5 transition hover:-translate-y-0.5 hover:border-[var(--accent)]/40 hover:shadow-lg">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-xl">{v.icon}</span>
+                <h3 className="serif mt-3 text-base font-semibold">{v.t}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-[var(--ink)]/70">{v.d}</p>
+              </div>
+            </Reveal>
           ))}
         </div>
       </section>
