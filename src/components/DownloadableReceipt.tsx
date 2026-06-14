@@ -11,7 +11,7 @@ import { ReceiptCard } from "./ReceiptCard";
  * design — unlike the Venice-generated art, which is non-deterministic. Gives a
  * shareable receipt image without depending on Venice credit.
  */
-export function DownloadableReceipt({ result }: { result: ResearchResult }) {
+export function DownloadableReceipt({ result, settled = false }: { result: ResearchResult; settled?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -38,7 +38,7 @@ export function DownloadableReceipt({ result }: { result: ResearchResult }) {
   return (
     <div className="space-y-2">
       <div ref={ref} className="w-fit">
-        <ReceiptCard result={result} />
+        <ReceiptCard result={result} settled={settled} />
       </div>
       <button
         onClick={download}

@@ -3,27 +3,47 @@ import type { ResearchResult } from "@/lib/agent";
 import { DownloadableReceipt } from "./DownloadableReceipt";
 import { CopyCitationsButton } from "./CopyCitationsButton";
 
-/** Render text with clickable [n] / ^n^ citations linking to the n-th cited paper. */
+/**
+ * Render text with clickable citations. Handles single AND grouped markers in
+ * either bracket or caret form: [1], [4,9], ^1^, ^2,3,7^ → each number links to
+ * its cited paper. Normalizes display to [n] / [n, m].
+ */
 export function CitedText({ text, works }: { text: string; works: { url: string; title: string }[] }) {
-  const parts = text.split(/(\[\d+\]|\^\d+\^)/g);
+  const parts = (text ?? "").split(/(\[[\d,\s]+\]|\^[\d,\s]+\^)/g);
   return (
     <>
       {parts.map((part, i) => {
-        if (/^(\[\d+\]|\^\d+\^)$/.test(part)) {
-          const n = Number(part.replace(/\D/g, ""));
-          const w = works[n - 1];
-          if (w?.url) {
+        const m = part.match(/^[[^]([\d,\s]+)[\]^]$/);
+        if (m) {
+          const nums = m[1].split(",").map((s) => s.trim()).filter((s) => /^\d+$/.test(s));
+          if (nums.length) {
             return (
-              <a
-                key={i}
-                href={w.url}
-                target="_blank"
-                rel="noreferrer"
-                title={w.title.replace(/<[^>]+>/g, "")}
-                className="font-medium text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-500"
-              >
-                [{n}]
-              </a>
+              <span key={i}>
+                [
+                {nums.map((nStr, j) => {
+                  const n = Number(nStr);
+                  const w = works[n - 1];
+                  return (
+                    <span key={j}>
+                      {j > 0 ? ", " : ""}
+                      {w?.url ? (
+                        <a
+                          href={w.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={(w.title ?? "").replace(/<[^>]+>/g, "")}
+                          className="font-medium text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-500"
+                        >
+                          {n}
+                        </a>
+                      ) : (
+                        n
+                      )}
+                    </span>
+                  );
+                })}
+                ]
+              </span>
             );
           }
         }

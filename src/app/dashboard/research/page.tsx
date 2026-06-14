@@ -12,6 +12,7 @@ import { redeemViaOneShot } from "@/lib/redeem";
 import { loadHistory, saveToHistory, removeFromHistory, clearHistory, type HistoryEntry } from "@/lib/history";
 import { pickFlaskConnector } from "@/lib/wagmi";
 import { DownloadableReceipt } from "@/components/DownloadableReceipt";
+import { CitedText } from "@/components/ResultView";
 import { FixSepoliaRpcButton } from "@/components/FixSepoliaRpcButton";
 import { sanitizeDecimal, sanitizeInteger } from "@/lib/format";
 import { saveGrant, loadGrant, clearGrant } from "@/lib/grant-store";
@@ -252,7 +253,13 @@ export default function ResearchPage() {
       });
       setRedeem({ status: "done", result });
     } catch (e) {
-      setRedeem({ status: "error", message: e instanceof Error ? e.message : String(e) });
+      const raw = e instanceof Error ? e.message : String(e);
+      const friendly = /requestExecutionPermissions.*not exist|doesn't has corresponding handler|method not found/i.test(raw)
+        ? "Your wallet doesn't expose the 1Shot relay permission method on this network/version. Use “Pay directly (no relayer)” instead — it settles authors on-chain without the relayer."
+        : /0x35d90805|alreadyattested/i.test(raw)
+          ? "This query was already settled on-chain — authors were already paid."
+          : raw;
+      setRedeem({ status: "error", message: friendly });
     }
   }
 
@@ -305,11 +312,13 @@ export default function ResearchPage() {
       recordAgentFeedback();
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
-      const friendly = /unauthorized|json-rpc protocol|in-flight transaction limit/i.test(raw)
-        ? "Your wallet rejected the payment (a 7702-delegated account or rate-limited RPC). Try a fresh wallet, or use the gasless 1Shot button."
-        : /insufficient|exceeds balance/i.test(raw)
-          ? "Not enough USDC in your wallet to settle. Fund it with test USDC and retry."
-          : raw;
+      const friendly = /0x35d90805|alreadyattested/i.test(raw)
+        ? "This query was already settled on-chain — its authors were already paid. Re-settling is blocked to prevent paying them twice. Ask a new question to settle again."
+        : /unauthorized|json-rpc protocol|in-flight transaction limit/i.test(raw)
+          ? "Your wallet rejected the payment (a 7702-delegated account or rate-limited RPC). Try a fresh wallet, or use the gasless 1Shot button."
+          : /insufficient|exceeds balance/i.test(raw)
+            ? "Not enough USDC in your wallet to settle. Fund it with test USDC and retry."
+            : raw;
       setPayDirect({ status: "error", message: friendly });
     }
   }
@@ -339,7 +348,11 @@ export default function ResearchPage() {
       // Reputation feedback loop (E): reward the agents that contributed.
       recordAgentFeedback();
     } catch (e) {
-      setSettle({ status: "error", message: e instanceof Error ? e.message : String(e) });
+      const raw = e instanceof Error ? e.message : String(e);
+      const friendly = /0x35d90805|alreadyattested/i.test(raw)
+        ? "This query was already attested on-chain — there is one canonical record per query (re-attesting is blocked). Ask a new question to record a fresh attestation."
+        : raw;
+      setSettle({ status: "error", message: friendly });
     }
   }
 
@@ -774,36 +787,45 @@ export default function ResearchPage() {
           </Field>
         </div>
 
-        {/* Dedup across runs: skip papers already cited on this device. */}
-        <label className="mt-3 flex cursor-pointer items-center gap-2 text-[11px] text-[var(--ink)]/75">
-          <input
-            type="checkbox"
-            checked={excludeSeen}
-            onChange={(e) => setExcludeSeen(e.target.checked)}
-            className="h-3.5 w-3.5 accent-[var(--accent)]"
-          />
-          Skip papers I&apos;ve already researched{" "}
-          {(() => {
-            const n = new Set(history.flatMap((h) => (h.result.works ?? []).map((w) => w.id)).filter(Boolean)).size;
-            return n > 0 ? (
-              <span className="text-[var(--muted)]">— {n} known paper{n === 1 ? "" : "s"} skipped, so each run finds fresh journals</span>
-            ) : (
-              <span className="text-[var(--muted)]">— surfaces fresh journals once you have past runs</span>
-            );
-          })()}
-        </label>
+        {/* Run options */}
+        <div className="mt-3 space-y-2 rounded-lg border border-[var(--rule)] bg-[var(--paper)] p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">Options</p>
 
-        {/* Auto-pay: honour the granted budget — settle authors the moment a run finishes. */}
-        <label className="mt-2 flex cursor-pointer items-center gap-2 text-[11px] text-[var(--ink)]/75">
-          <input
-            type="checkbox"
-            checked={autoPay}
-            onChange={(e) => setAutoPay(e.target.checked)}
-            className="h-3.5 w-3.5 accent-[var(--accent)]"
-          />
-          Auto-pay authors when research finishes{" "}
-          <span className="text-[var(--muted)]">— settles directly on-chain (no relayer) right after each run; honours the budget you already committed</span>
-        </label>
+          <label className="flex cursor-pointer items-start gap-2.5 text-[11px] text-[var(--ink)]/80">
+            <input
+              type="checkbox"
+              checked={excludeSeen}
+              onChange={(e) => setExcludeSeen(e.target.checked)}
+              className="mt-0.5 h-3.5 w-3.5 accent-[var(--accent)]"
+            />
+            <span>
+              <span className="font-medium">Skip papers I&apos;ve already researched</span>
+              {(() => {
+                const n = new Set(history.flatMap((h) => (h.result.works ?? []).map((w) => w.id)).filter(Boolean)).size;
+                return (
+                  <span className="block text-[10px] text-[var(--muted)]">
+                    {n > 0 ? `${n} known paper${n === 1 ? "" : "s"} skipped — each run finds fresh journals` : "Surfaces fresh journals once you have past runs"}
+                  </span>
+                );
+              })()}
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-2.5 text-[11px] text-[var(--ink)]/80">
+            <input
+              type="checkbox"
+              checked={autoPay}
+              onChange={(e) => setAutoPay(e.target.checked)}
+              className="mt-0.5 h-3.5 w-3.5 accent-[var(--accent)]"
+            />
+            <span>
+              <span className="font-medium">Auto-pay authors when research finishes</span>
+              <span className="block text-[10px] text-[var(--muted)]">
+                Settles directly on-chain (no relayer) right after each run — honours the budget you committed at grant time
+              </span>
+            </span>
+          </label>
+        </div>
 
         {research.status === "running" ? (
           <ol className="mt-5 space-y-2">
@@ -1181,7 +1203,10 @@ export default function ResearchPage() {
               {/* Canonical on-brand receipt — always shown, consistent design,
                   reproducible from the saved run. Venice image/audio are extras. */}
               <div className="mt-4 space-y-3">
-                <DownloadableReceipt result={research.result} />
+                <DownloadableReceipt
+                  result={research.result}
+                  settled={settle.status === "done" || payDirect.status === "done" || redeem.status === "done"}
+                />
                 {receipt.status === "generating" ? (
                   <p className="text-[11px] text-[var(--muted)]">Generating Venice multimodal extras…</p>
                 ) : null}
@@ -1318,36 +1343,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function ErrorBox({ children }: { children: React.ReactNode }) {
   return <p className="mt-4 rounded-md bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40">{children}</p>;
-}
-
-/** Render text with clickable [n] / ^n^ citations linking to the n-th cited paper. */
-function CitedText({ text, works }: { text: string; works: { url: string; title: string }[] }) {
-  const parts = text.split(/(\[\d+\]|\^\d+\^)/g);
-  return (
-    <>
-      {parts.map((part, i) => {
-        if (/^(\[\d+\]|\^\d+\^)$/.test(part)) {
-          const n = Number(part.replace(/\D/g, ""));
-          const w = works[n - 1];
-          if (w?.url) {
-            return (
-              <a
-                key={i}
-                href={w.url}
-                target="_blank"
-                rel="noreferrer"
-                title={w.title.replace(/<[^>]+>/g, "")}
-                className="font-medium text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-500"
-              >
-                [{n}]
-              </a>
-            );
-          }
-        }
-        return <span key={i}>{part}</span>;
-      })}
-    </>
-  );
 }
 
 /** Per-run autonomous agent spend (one paper unlocked via x402). */
