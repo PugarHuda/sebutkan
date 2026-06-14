@@ -53,30 +53,55 @@ export default function Home() {
       <hr className="my-16 w-full max-w-2xl border-[var(--rule)]" />
 
       {/* How it works */}
-      <section className="grid w-full max-w-4xl gap-px overflow-hidden rounded-md border border-[var(--rule)] bg-[var(--rule)] sm:grid-cols-3">
-        {[
-          {
-            n: "I.",
-            t: "Grant once",
-            d: "Sign one ERC-7715 Advanced Permission — a periodic USDC budget. The agent can never exceed it. You keep custody.",
-          },
-          {
-            n: "II.",
-            t: "The agents work",
-            d: "The Researcher pays for papers via x402, then redelegates strictly narrower budgets to a Planner, parallel Readers, a Fact-checker, and a Summarizer — all reasoning with Venice (private + uncensored).",
-          },
-          {
-            n: "III.",
-            t: "Authors are paid",
-            d: "Every citation pays its author — gasless via 1Shot. Unclaimed shares wait on-chain until they claim with ORCID.",
-          },
-        ].map((s) => (
-          <div key={s.n} className="bg-[var(--paper-2)] p-6 text-left">
-            <div className="serif text-sm font-semibold text-[var(--accent)]">{s.n}</div>
-            <h3 className="serif mt-1 text-xl font-semibold">{s.t}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--ink)]/75">{s.d}</p>
-          </div>
-        ))}
+      <section className="w-full max-w-4xl">
+        <p className="mb-6 text-center text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">How it works</p>
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+          {[
+            {
+              icon: "🔑",
+              n: "I",
+              t: "Grant once",
+              d: "Sign one ERC-7715 Advanced Permission — a periodic USDC budget the agent can never exceed. You keep custody.",
+              tag: "ERC-7715",
+            },
+            {
+              icon: "🤖",
+              n: "II",
+              t: "The agents work",
+              d: "The Researcher buys papers via x402, then redelegates strictly narrower budgets to a Planner, parallel Readers, a Fact-checker & a Summarizer — all reasoning with Venice.",
+              tag: "x402 · 7710 · Venice",
+            },
+            {
+              icon: "💸",
+              n: "III",
+              t: "Authors are paid",
+              d: "Every citation pays its author — gasless via 1Shot. Unclaimed shares wait on-chain until they claim with ORCID.",
+              tag: "1Shot · escrow",
+            },
+          ].map((s, i) => (
+            <div key={s.n} className="flex flex-1 items-stretch">
+              <div className="flex flex-1 flex-col rounded-xl border border-[var(--rule)] bg-[var(--paper-2)] p-5 text-left transition hover:border-[var(--accent)]/40">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent-soft)] text-lg">{s.icon}</span>
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--accent)]">Step {s.n}</div>
+                    <h3 className="serif text-lg font-semibold leading-tight">{s.t}</h3>
+                  </div>
+                </div>
+                <p className="mt-3 flex-1 text-sm leading-relaxed text-[var(--ink)]/75">{s.d}</p>
+                <div className="mt-3 inline-flex w-fit rounded-full bg-[var(--paper)] px-2.5 py-1 font-mono text-[10px] text-[var(--muted)]">
+                  {s.tag}
+                </div>
+              </div>
+              {i < 2 ? (
+                <div className="flex items-center justify-center px-1 text-[var(--accent)]/50">
+                  <span className="hidden text-xl sm:inline">→</span>
+                  <span className="text-xl sm:hidden">↓</span>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* Proof line */}

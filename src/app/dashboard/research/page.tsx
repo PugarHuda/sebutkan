@@ -108,6 +108,7 @@ export default function ResearchPage() {
   const [payDirect, setPayDirect] = useState<{ status: "idle" | "approving" | "paying" | "done" | "error"; tx?: string; message?: string }>({
     status: "idle",
   });
+  const [alreadyAttested, setAlreadyAttested] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptState>({ status: "idle" });
   const [feedback, setFeedback] = useState<FeedbackState>({ status: "idle" });
   const [share, setShare] = useState<ShareState>({ status: "idle" });
@@ -228,6 +229,27 @@ export default function ResearchPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [research.status, autoPay]);
+
+  // Surface whether this query was already settled on-chain (re-settle is blocked
+  // to prevent double-paying authors) — so the Settle buttons can say so upfront.
+  useEffect(() => {
+    if (research.status !== "done" || !publicClient) {
+      setAlreadyAttested(false);
+      return;
+    }
+    const ledger = process.env.NEXT_PUBLIC_ATTRIBUTION_LEDGER as `0x${string}` | undefined;
+    if (!ledger) return;
+    publicClient
+      .readContract({
+        address: ledger,
+        abi: [{ type: "function", name: "attested", stateMutability: "view", inputs: [{ name: "", type: "bytes32" }], outputs: [{ type: "bool" }] }],
+        functionName: "attested",
+        args: [queryIdOf(research.result.query)],
+      })
+      .then((v) => setAlreadyAttested(Boolean(v)))
+      .catch(() => setAlreadyAttested(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [research.status, publicClient]);
 
   async function handleRedeem() {
     if (research.status !== "done") return;
@@ -1067,19 +1089,31 @@ export default function ResearchPage() {
                 <>
                   {/* Settle: the on-chain RECORD + the single payment. These are not
                       a double charge — see the note below. */}
-                  <p className="mt-5 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">Settle</p>
+                  <div className="mt-5 flex items-center gap-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">Settle</p>
+                    {alreadyAttested ? (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                        ✓ already settled on-chain — authors paid
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-3">
                     <button
                       onClick={handleSettle}
-                      disabled={settle.status === "settling"}
+                      disabled={settle.status === "settling" || alreadyAttested}
+                      title={alreadyAttested ? "This query was already attested on-chain" : undefined}
                       className="rounded-lg bg-emerald-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-40"
                     >
-                      {settle.status === "settling" ? "Recording…" : "① Record attestation (on-chain receipt)"}
+                      {settle.status === "settling"
+                        ? "Recording…"
+                        : alreadyAttested
+                          ? "✓ Attested"
+                          : "① Record attestation (on-chain receipt)"}
                     </button>
                     <span className="inline-flex items-center gap-1.5">
                       <button
                         onClick={handleRedeem}
-                        disabled={redeem.status === "redeeming"}
+                        disabled={redeem.status === "redeeming" || alreadyAttested}
                         className="rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-indigo-500 disabled:opacity-40"
                       >
                         {redeem.status === "redeeming" ? "Relaying…" : "② Pay authors (gasless · 1Shot) →"}
@@ -1096,7 +1130,7 @@ export default function ResearchPage() {
                     </span>
                     <button
                       onClick={handlePayDirect}
-                      disabled={payDirect.status === "approving" || payDirect.status === "paying"}
+                      disabled={payDirect.status === "approving" || payDirect.status === "paying" || alreadyAttested}
                       title="Pay authors straight from your wallet via attestAndSplit — no relayer, no relayer fee (you pay gas in ETH)"
                       className="rounded-lg border border-indigo-300 px-4 py-2.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-40 dark:border-indigo-800 dark:hover:bg-indigo-950/30"
                     >

@@ -25,7 +25,7 @@ const NAV_SECTIONS: {
     title: "Earn",
     items: [
       { href: "/dashboard/bounties", label: "Bounties", glyph: "◈", hint: "Sponsor a research topic" },
-      { href: "/dashboard/claim", label: "Claim & Rewards", glyph: "◉", hint: "Authors: get paid + loyalty yield" },
+      { href: "/dashboard/claim", label: "Claim earnings", glyph: "◉", hint: "Authors: withdraw earnings + loyalty yield" },
     ],
   },
   {

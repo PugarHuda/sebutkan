@@ -227,7 +227,7 @@ export default function ClaimPage() {
         {/* Your rewards (UnclaimedEscrow principal + CitationYield bonus) */}
         {verifiedOrcid ? (
           <div className="mt-2 space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
-            <h3 className="serif text-sm font-semibold">Your rewards</h3>
+            <h3 className="serif text-sm font-semibold">Your earnings</h3>
 
             {/* Principal — accumulates as you're cited more */}
             <div>
