@@ -21,16 +21,19 @@ browser zoom ~110%, MetaMask **Flask** in a clean profile. Live link: https://se
 - **Scores:** Qualification (MetaMask Advanced Permissions in the main flow).
 
 ### Scene 2 — Grant ONE permission (0:30–0:55) · x402 + 7710 setup
-- **Screen:** Step 2 → set "10 USDC/day, expires 24h" → **Grant budget** → Flask popup → sign.
+- **Screen:** the top **progress stepper** (① Grant → ② Research → ③ Settle). Step 2 → set
+  "10 USDC/day, expires 24h" → **Grant budget** → Flask popup → sign.
 - **Say:** "I grant **one** ERC-7715 periodic-USDC permission. The agent operates inside a
   cryptographically enforced cap it can never exceed — no blanket approval, no custody."
-- **Show:** the granted permission-context JSON expands.
+- **Show:** the **budget-status panel** — "Granted ceiling 10 USDC/day · live countdown · nothing
+  charged, this is a cap." (Expand *"View raw permission context"* for the JSON proof.) The setup
+  collapses to this compact panel once granted.
 - **Scores:** Best x402 + ERC-7710 (the 7715 grant → 7710 delegation).
 
 ### Scene 3 — The mesh, before it runs (0:55–1:15) · A2A redelegation
-- **Screen:** the **Agent mesh** card — the indented tree (You → Researcher → Planner /
-  Reader / Fact-checker / Summarizer) with each hop's **narrowed** budget chip (≤ 4.00, ≤ 1.50,
-  ≤ 0.50 USDC) and caveats.
+- **Screen:** expand the **Agent mesh** card (*show ▾*) — the indented tree (You → Researcher →
+  Planner / Reader / Fact-checker / Summarizer) with each hop's **narrowed** budget chip (≤ 4.00,
+  ≤ 1.50, ≤ 0.50 USDC) and caveats.
 - **Say:** "The Researcher will **redelegate** strictly narrower slices to specialists.
   Authority only ever *narrows* — that's the A2A model."
 - **Scores:** Best A2A coordination (redelegation, shown up front).
@@ -64,11 +67,13 @@ browser zoom ~110%, MetaMask **Flask** in a clean profile. Live link: https://se
 - **Scores:** Best use of Venice AI (multi-endpoint, in the main flow).
 
 ### Scene 7 — Pay the authors (2:40–3:00) · x402 + 1Shot
-- **Screen:** the **author payout plan** table (each citation → a wallet, claimed/demo).
-  Click **1 · Record attestation** → Flask/operator tx → "Attested on-chain ✓" with Etherscan link.
-  Then the **x402 paid** chip (the agent already bought the top paper, on-chain).
-- **Say:** "Every citation is an on-chain payment. The agent paid for the paper via **x402**, and
-  now records who gets what — auditable on Etherscan."
+- **Screen:** the **author payout plan** table (each citation → a wallet, claimed/demo). Click the
+  primary **"Pay authors — settle on-chain"** → Flask → one tx that **records the attestation AND
+  pays each author** (`attestAndSplit`). The receipt flips to **"Citations Paid"**, the **stepper**
+  advances to ③, and the **✓ settled** badge appears. (Mention the *Advanced* options: gasless 1Shot
+  relay, or "Auto-pay on finish" which settles automatically — honouring the budget.)
+- **Say:** "One click records who's owed **and** pays them — each author settled once, no double-pay.
+  The agent already bought the top paper via **x402**. All auditable on Etherscan."
 - **Scores:** Best x402 + ERC-7710.
 
 ### Scene 8 — Reputation feedback (3:00–3:10) · Best Agent
