@@ -116,6 +116,7 @@ export default function ResearchPage() {
 
   const [excludeSeen, setExcludeSeen] = useState(true);
   const [autoPay, setAutoPay] = useState(false);
+  const [autoPayRail, setAutoPayRail] = useState<"direct" | "1shot">("direct");
   const [prefund, setPrefund] = useState(false);
   const [prefundState, setPrefundState] = useState<{
     status: "idle" | "locking" | "locked" | "splitting" | "done" | "error";
@@ -254,10 +255,13 @@ export default function ResearchPage() {
   // honouring the budget you already committed when granting (opt-in, off by default).
   useEffect(() => {
     if (research.status === "done" && autoPay && !prefund && payDirect.status === "idle" && redeem.status === "idle") {
-      handlePayDirect();
+      // Both rails are real: direct = attestAndSplit from your wallet (no fee);
+      // 1shot = the live 1Shot relayer (gasless, gas paid in USDC).
+      if (autoPayRail === "1shot") handleRedeem();
+      else handlePayDirect();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [research.status, autoPay]);
+  }, [research.status, autoPay, autoPayRail]);
 
   // Prefund (Kutip-style): the locked pool auto-splits to authors when the run ends.
   useEffect(() => {
@@ -1097,9 +1101,25 @@ export default function ResearchPage() {
               className="mt-0.5 h-3.5 w-3.5 accent-[var(--accent)]"
             />
             <span>
-              <span className="font-medium">Auto-pay authors when research finishes</span>
+              <span className="font-medium">Auto-pay authors when research finishes</span>{" "}
+              {autoPay && !prefund ? (
+                <span className="inline-flex items-center gap-1 text-[10px]">
+                  via
+                  <select
+                    value={autoPayRail}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setAutoPayRail(e.target.value as "direct" | "1shot")}
+                    className="rounded border border-[var(--rule)] bg-transparent px-1 py-0.5 text-[10px]"
+                  >
+                    <option value="direct">direct (no fee)</option>
+                    <option value="1shot">1Shot (gasless relay)</option>
+                  </select>
+                </span>
+              ) : null}
               <span className="block text-[10px] text-[var(--muted)]">
-                Settles directly on-chain (no relayer) right after each run — honours the budget you committed at grant time
+                {autoPayRail === "1shot"
+                  ? "Settles via the live 1Shot relayer (gasless — gas paid in USDC). High fee on Sepolia testnet; tiny on Base. Real, not a mock."
+                  : "Settles directly on-chain (attestAndSplit, no relayer fee) right after each run — honours the budget you committed."}
               </span>
             </span>
           </label>
