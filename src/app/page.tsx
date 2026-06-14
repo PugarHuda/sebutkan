@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LandingStats } from "@/components/LandingStats";
-import { ReceiptPeek } from "@/components/ReceiptPeek";
+import { AgentTracePreview } from "@/components/AgentTracePreview";
 import { RoomHero } from "@/components/RoomHero";
 import { Reveal } from "@/components/Reveal";
 
@@ -10,10 +10,9 @@ export default function Home() {
       <div className="paper-grid pointer-events-none absolute inset-0 -z-10" />
       <RoomHero />
 
-      {/* Hero — text + a live product peek, side by side on desktop */}
-      <section className="grid w-full max-w-5xl items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
-        {/* Left: copy */}
-        <div className="fade-up text-center lg:text-left">
+      {/* Hero — copy over the anime study-room illustration */}
+      <section className="w-full max-w-5xl">
+        <div className="fade-up max-w-2xl text-center lg:mr-auto lg:max-w-xl lg:text-left">
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 lg:justify-start">
             <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
               MetaMask Smart Accounts · 1Shot · Venice AI
@@ -62,16 +61,16 @@ export default function Home() {
             </Link>
           </div>
         </div>
-
-        {/* Right: product peek */}
-        <div className="fade-up flex justify-center lg:justify-end" style={{ animationDelay: "0.12s" }}>
-          <ReceiptPeek />
-        </div>
       </section>
 
       <div className="fade-up" style={{ animationDelay: "0.2s" }}>
         <LandingStats />
       </div>
+
+      {/* One run, end to end */}
+      <Reveal className="mt-16 w-full max-w-4xl">
+        <AgentTracePreview />
+      </Reveal>
 
       <hr className="my-16 w-full max-w-2xl border-[var(--rule)]" />
 

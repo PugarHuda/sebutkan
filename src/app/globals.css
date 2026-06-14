@@ -184,3 +184,18 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .dust { animation: none; opacity: 0; }
 }
+
+/* ── Agent-trace preview: steps light up in sequence ─────────────────────── */
+@keyframes trace-pulse {
+  0%   { border-color: var(--rule); background: var(--paper); color: var(--muted); }
+  4%   { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  16%  { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  26%  { border-color: var(--rule); background: var(--paper); color: var(--muted); }
+  100% { border-color: var(--rule); background: var(--paper); color: var(--muted); }
+}
+.trace-step {
+  animation: trace-pulse 6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .trace-step { animation: none; }
+}
