@@ -117,22 +117,42 @@ body {
 /* gentle in-place float for scattered sheets */
 @keyframes paper-float {
   0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
-  50%      { transform: translateY(-16px) rotate(calc(var(--rot, 0deg) + 3deg)); }
+  50%      { transform: translateY(-22px) rotate(calc(var(--rot, 0deg) + 4deg)); }
 }
 .paper-float {
   animation: paper-float var(--dur, 9s) ease-in-out var(--delay, 0s) infinite;
 }
-/* a sheet drifting across the hero and tumbling, then looping */
-@keyframes paper-fly {
-  0%   { transform: translate(0, 0) rotate(var(--rot, 0deg)); opacity: 0; }
-  8%   { opacity: var(--op, 0.12); }
-  92%  { opacity: var(--op, 0.12); }
-  100% { transform: translate(var(--dx, 60px), var(--dy, -120px)) rotate(calc(var(--rot, 0deg) + var(--dr, 90deg))); opacity: 0; }
+
+/* Natural falling paper: three nested motions.
+   outer .paper-fall  → descends top→bottom (linear) + fades at the ends
+   middle .paper-sway → swings left↔right like a leaf (ease-in-out, alternating)
+   inner  .paper-sheet→ slowly flips in 3D (rotateY tumble)                     */
+@keyframes paper-fall {
+  0%   { transform: translateY(-220px); opacity: 0; }
+  7%   { opacity: var(--op, 0.22); }
+  93%  { opacity: var(--op, 0.22); }
+  100% { transform: translateY(var(--fall, 980px)); opacity: 0; }
 }
-.paper-fly {
-  animation: paper-fly var(--dur, 16s) linear var(--delay, 0s) infinite;
+.paper-fall {
+  animation: paper-fall var(--dur, 14s) linear var(--delay, 0s) infinite;
+  will-change: transform, opacity;
 }
+@keyframes paper-sway {
+  0%   { transform: translateX(calc(var(--sway, 34px) * -1)) rotate(var(--r0, -10deg)); }
+  100% { transform: translateX(var(--sway, 34px)) rotate(var(--r1, 10deg)); }
+}
+.paper-sway {
+  display: block;
+  animation: paper-sway var(--swayDur, 4s) ease-in-out var(--delay, 0s) infinite alternate;
+}
+@keyframes paper-tumble {
+  to { transform: rotateY(360deg); }
+}
+.paper-tumble {
+  animation: paper-tumble var(--tumbleDur, 7s) linear var(--delay, 0s) infinite;
+  transform-style: preserve-3d;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .paper-float, .paper-fly { animation: none; }
-  .paper-fly { opacity: var(--op, 0.1); }
+  .paper-float, .paper-fall, .paper-sway, .paper-tumble { animation: none; }
 }

@@ -4,40 +4,56 @@ import { useEffect, useRef } from "react";
 
 /**
  * Decorative "flying / scattered paper" field behind the hero — pure CSS + DOM,
- * no dependencies. A few sheets drift across and tumble (paper-fly), a few hover
- * in place (paper-float), and a small messy stack sits in a corner. The whole
- * field parallaxes gently with the cursor. Honors prefers-reduced-motion (the CSS
- * animations stop; the scattered layout stays). Purely cosmetic, aria-hidden.
+ * no dependencies. Sheets fall from the top while swaying side-to-side like a
+ * leaf and slowly flipping in 3D (three nested motions: fall ▸ sway ▸ tumble),
+ * a few hover in place, and a messy stack sits in a corner. The field parallaxes
+ * gently with the cursor. Honors prefers-reduced-motion. Cosmetic, aria-hidden.
  */
 
-type Sheet = { top: string; left?: string; right?: string; w: number; h: number; vars: Record<string, string | number> };
+type V = Record<string, string | number>;
 
-// Sheets that hover in place at scattered positions.
-const FLOATERS: Sheet[] = [
-  { top: "8%", left: "6%", w: 64, h: 84, vars: { "--rot": "-12deg", "--dur": "8s", "--delay": "0s" } },
-  { top: "20%", left: "16%", w: 44, h: 58, vars: { "--rot": "7deg", "--dur": "11s", "--delay": "1.2s" } },
-  { top: "62%", left: "9%", w: 56, h: 74, vars: { "--rot": "5deg", "--dur": "9.5s", "--delay": "0.6s" } },
-  { top: "12%", right: "8%", w: 58, h: 76, vars: { "--rot": "10deg", "--dur": "10s", "--delay": "0.3s" } },
-  { top: "70%", right: "14%", w: 48, h: 62, vars: { "--rot": "-8deg", "--dur": "12s", "--delay": "1.8s" } },
-  { top: "44%", right: "5%", w: 40, h: 52, vars: { "--rot": "-4deg", "--dur": "9s", "--delay": "2.4s" } },
+// Falling sheets — negative delays so the field is already populated on load.
+const FALLERS: { left: string; w: number; h: number; vars: V }[] = [
+  { left: "3%", w: 132, h: 168, vars: { "--op": 0.26, "--dur": "16s", "--delay": "-2s", "--sway": "40px", "--swayDur": "4.5s", "--r0": "-12deg", "--r1": "10deg", "--tumbleDur": "9s" } },
+  { left: "12%", w: 88, h: 112, vars: { "--op": 0.22, "--dur": "13s", "--delay": "-7s", "--sway": "30px", "--swayDur": "3.6s", "--r0": "8deg", "--r1": "-9deg", "--tumbleDur": "7s" } },
+  { left: "22%", w: 150, h: 190, vars: { "--op": 0.20, "--dur": "19s", "--delay": "-11s", "--sway": "48px", "--swayDur": "5.2s", "--r0": "-7deg", "--r1": "12deg", "--tumbleDur": "11s" } },
+  { left: "33%", w: 74, h: 96, vars: { "--op": 0.24, "--dur": "12s", "--delay": "-4s", "--sway": "26px", "--swayDur": "3.2s", "--r0": "10deg", "--r1": "-6deg", "--tumbleDur": "6s" } },
+  { left: "44%", w: 116, h: 148, vars: { "--op": 0.16, "--dur": "17s", "--delay": "-9s", "--sway": "36px", "--swayDur": "4.8s", "--r0": "-9deg", "--r1": "9deg", "--tumbleDur": "10s" } },
+  { left: "55%", w: 96, h: 124, vars: { "--op": 0.21, "--dur": "14s", "--delay": "-1s", "--sway": "32px", "--swayDur": "4s", "--r0": "6deg", "--r1": "-11deg", "--tumbleDur": "8s" } },
+  { left: "64%", w: 140, h: 178, vars: { "--op": 0.18, "--dur": "20s", "--delay": "-14s", "--sway": "44px", "--swayDur": "5.5s", "--r0": "-11deg", "--r1": "7deg", "--tumbleDur": "12s" } },
+  { left: "74%", w: 80, h: 104, vars: { "--op": 0.25, "--dur": "12.5s", "--delay": "-6s", "--sway": "28px", "--swayDur": "3.4s", "--r0": "9deg", "--r1": "-8deg", "--tumbleDur": "6.5s" } },
+  { left: "83%", w: 124, h: 158, vars: { "--op": 0.22, "--dur": "15.5s", "--delay": "-10s", "--sway": "38px", "--swayDur": "4.6s", "--r0": "-8deg", "--r1": "11deg", "--tumbleDur": "9.5s" } },
+  { left: "92%", w: 92, h: 118, vars: { "--op": 0.20, "--dur": "13.5s", "--delay": "-3s", "--sway": "30px", "--swayDur": "3.8s", "--r0": "7deg", "--r1": "-10deg", "--tumbleDur": "7.5s" } },
+  { left: "17%", w: 104, h: 132, vars: { "--op": 0.19, "--dur": "18s", "--delay": "-15s", "--sway": "34px", "--swayDur": "5s", "--r0": "-10deg", "--r1": "8deg", "--tumbleDur": "10.5s" } },
+  { left: "49%", w: 70, h: 90, vars: { "--op": 0.23, "--dur": "11s", "--delay": "-8s", "--sway": "24px", "--swayDur": "3s", "--r0": "11deg", "--r1": "-7deg", "--tumbleDur": "5.5s" } },
+  { left: "69%", w: 110, h: 140, vars: { "--op": 0.17, "--dur": "16.5s", "--delay": "-12s", "--sway": "40px", "--swayDur": "4.9s", "--r0": "-6deg", "--r1": "12deg", "--tumbleDur": "11.5s" } },
+  { left: "88%", w: 78, h: 100, vars: { "--op": 0.24, "--dur": "12.8s", "--delay": "-5s", "--sway": "27px", "--swayDur": "3.5s", "--r0": "8deg", "--r1": "-9deg", "--tumbleDur": "6.8s" } },
 ];
 
-// Sheets that fly across the hero and tumble on a loop.
-const FLYERS: Sheet[] = [
-  { top: "30%", left: "2%", w: 50, h: 66, vars: { "--rot": "-6deg", "--op": 0.13, "--dur": "17s", "--delay": "0s", "--dx": "180px", "--dy": "-160px", "--dr": "150deg" } },
-  { top: "78%", left: "22%", w: 42, h: 56, vars: { "--rot": "4deg", "--op": 0.1, "--dur": "21s", "--delay": "3s", "--dx": "240px", "--dy": "-220px", "--dr": "-120deg" } },
-  { top: "55%", right: "2%", w: 46, h: 60, vars: { "--rot": "8deg", "--op": 0.11, "--dur": "19s", "--delay": "6s", "--dx": "-200px", "--dy": "-180px", "--dr": "200deg" } },
-  { top: "5%", left: "40%", w: 38, h: 50, vars: { "--rot": "-10deg", "--op": 0.09, "--dur": "23s", "--delay": "9s", "--dx": "120px", "--dy": "160px", "--dr": "-90deg" } },
+// Big sheets that hover in place near the edges, for a scattered "desk" feel.
+const FLOATERS: { top: string; left?: string; right?: string; w: number; h: number; vars: V }[] = [
+  { top: "6%", left: "5%", w: 150, h: 190, vars: { "--rot": "-13deg", "--dur": "9s", "--delay": "0s" } },
+  { top: "58%", left: "4%", w: 120, h: 152, vars: { "--rot": "7deg", "--dur": "11s", "--delay": "1s" } },
+  { top: "10%", right: "5%", w: 140, h: 176, vars: { "--rot": "11deg", "--dur": "10s", "--delay": "0.4s" } },
+  { top: "62%", right: "8%", w: 124, h: 156, vars: { "--rot": "-9deg", "--dur": "12s", "--delay": "1.6s" } },
 ];
 
-// A small messy stack of overlapping sheets in a corner.
+// A bigger messy stack of overlapping sheets in a corner.
 const STACK: { rot: string; x: number; y: number }[] = [
-  { rot: "-9deg", x: 0, y: 6 },
-  { rot: "5deg", x: 6, y: 3 },
-  { rot: "-3deg", x: 2, y: 0 },
-  { rot: "11deg", x: 10, y: 8 },
-  { rot: "1deg", x: 4, y: 2 },
+  { rot: "-11deg", x: 0, y: 10 },
+  { rot: "6deg", x: 10, y: 5 },
+  { rot: "-4deg", x: 3, y: 0 },
+  { rot: "13deg", x: 16, y: 12 },
+  { rot: "2deg", x: 7, y: 3 },
+  { rot: "-8deg", x: 20, y: 7 },
 ];
+
+const sheetVisual = (w: number, h: number, extra: React.CSSProperties = {}, cls = "") => (
+  <span
+    className={`paper-sheet ${cls}`}
+    style={{ position: "relative", width: w, height: h, top: 0, left: 0, ...extra } as React.CSSProperties}
+  />
+);
 
 export function FloatingPapers() {
   const ref = useRef<HTMLDivElement>(null);
@@ -50,8 +66,8 @@ export function FloatingPapers() {
     const onMove = (e: PointerEvent) => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        const dx = (e.clientX / window.innerWidth - 0.5) * 18;
-        const dy = (e.clientY / window.innerHeight - 0.5) * 18;
+        const dx = (e.clientX / window.innerWidth - 0.5) * 26;
+        const dy = (e.clientY / window.innerHeight - 0.5) * 20;
         el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
       });
     };
@@ -62,44 +78,38 @@ export function FloatingPapers() {
     };
   }, []);
 
-  const sheet = (s: Sheet, cls: string, key: string) => (
-    <span
-      key={key}
-      className={`paper-sheet ${cls}`}
-      style={{
-        top: s.top,
-        left: s.left,
-        right: s.right,
-        width: s.w,
-        height: s.h,
-        ...s.vars,
-      } as unknown as React.CSSProperties}
-    />
-  );
-
   return (
     <div
       ref={ref}
       aria-hidden
-      className="pointer-events-none absolute inset-0 -z-10 overflow-hidden opacity-70 transition-transform duration-300 ease-out [will-change:transform]"
+      className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[980px] overflow-hidden transition-transform duration-300 ease-out [will-change:transform]"
+      style={{ perspective: "1200px" }}
     >
-      {FLOATERS.map((s, i) => sheet(s, "paper-float", `fl${i}`))}
-      {FLYERS.map((s, i) => sheet(s, "paper-fly", `fy${i}`))}
+      {/* falling, swaying, tumbling sheets */}
+      {FALLERS.map((s, i) => (
+        <span key={`fa${i}`} className="paper-fall absolute top-0" style={{ left: s.left, ...s.vars } as React.CSSProperties}>
+          <span className="paper-sway" style={s.vars as React.CSSProperties}>
+            {sheetVisual(s.w, s.h, {}, "paper-tumble")}
+          </span>
+        </span>
+      ))}
 
-      {/* messy stack, lower-left whitespace (hidden on small screens) */}
-      <div className="absolute left-[3%] top-[78%] hidden h-32 w-28 lg:block">
+      {/* big hovering sheets near the edges */}
+      {FLOATERS.map((s, i) => (
+        <span
+          key={`fl${i}`}
+          className="paper-sheet paper-float"
+          style={{ top: s.top, left: s.left, right: s.right, width: s.w, height: s.h, ...s.vars } as React.CSSProperties}
+        />
+      ))}
+
+      {/* a bigger messy stack, lower-left whitespace (hidden on small screens) */}
+      <div className="absolute left-[2%] top-[72%] hidden h-44 w-40 lg:block">
         {STACK.map((p, i) => (
           <span
             key={`st${i}`}
             className="paper-sheet"
-            style={{
-              top: p.y,
-              left: p.x,
-              width: 96,
-              height: 120,
-              transform: `rotate(${p.rot})`,
-              opacity: 0.5,
-            }}
+            style={{ top: p.y, left: p.x, width: 136, height: 172, transform: `rotate(${p.rot})`, opacity: 0.55 }}
           />
         ))}
       </div>

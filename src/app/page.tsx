@@ -9,6 +9,11 @@ export default function Home() {
     <div className="relative flex flex-1 flex-col items-center overflow-hidden px-6 py-20">
       <div className="paper-grid pointer-events-none absolute inset-0 -z-10" />
       <FloatingPapers />
+      {/* soft readability scrim over the falling papers, concentrated on the headline */}
+      <div
+        className="pointer-events-none absolute inset-0 -z-[5]"
+        style={{ background: "radial-gradient(ellipse 62% 48% at 34% 26%, var(--paper) 38%, transparent 74%)" }}
+      />
 
       {/* Hero — text + a live product peek, side by side on desktop */}
       <section className="grid w-full max-w-5xl items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
