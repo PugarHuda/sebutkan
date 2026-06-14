@@ -166,3 +166,21 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .paper-float, .paper-fall, .paper-sway, .paper-flutter { animation: none; }
 }
+
+/* ── Anime room hero: floating dust motes in the window light ─────────────── */
+@keyframes dust-rise {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  18%  { opacity: var(--op, 0.6); }
+  82%  { opacity: var(--op, 0.6); }
+  100% { transform: translateY(-150px) translateX(var(--dx, 24px)); opacity: 0; }
+}
+.dust {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255, 244, 214, 0.95), rgba(255, 240, 200, 0));
+  animation: dust-rise var(--dur, 9s) linear var(--delay, 0s) infinite;
+  will-change: transform, opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dust { animation: none; opacity: 0; }
+}
