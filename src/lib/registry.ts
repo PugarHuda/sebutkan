@@ -57,8 +57,10 @@ export function bindingMessage(authorId: string, wallet: Address): `0x${string}`
 
 /** Deterministic demo wallet for unclaimed authors (never the zero address). */
 export function demoWallet(seed: string): Address {
+  // Defensive: an author id can be missing from upstream data — never throw.
+  const s = typeof seed === "string" && seed.length > 0 ? seed : "unknown-author";
   let h = 0n;
-  for (const ch of seed) h = (h * 131n + BigInt(ch.charCodeAt(0))) % (1n << 160n);
+  for (const ch of s) h = (h * 131n + BigInt(ch.charCodeAt(0))) % (1n << 160n);
   if (h === 0n) h = 1n;
   return getAddress(`0x${h.toString(16).padStart(40, "0")}`);
 }

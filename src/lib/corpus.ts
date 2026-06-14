@@ -159,11 +159,16 @@ export async function searchCorpus(query: string, opts: CorpusOptions = {}): Pro
   // demo fallback for unclaimed.
   const enriched = results.map((w) => ({
     w,
-    authors: (w.authorships ?? []).slice(0, 4).map((a) => ({
-      id: a.author.id,
-      name: a.author.display_name,
-      orcid: a.author.orcid ? normalizeOrcid(a.author.orcid) : undefined,
-    })),
+    authors: (w.authorships ?? [])
+      .filter((a) => a?.author)
+      .slice(0, 4)
+      .map((a) => ({
+        // OpenAlex occasionally omits author.id → fall back to orcid/name so the
+        // identity is never undefined (demoWallet iterates it).
+        id: a.author.id ?? a.author.orcid ?? a.author.display_name ?? "unknown-author",
+        name: a.author.display_name ?? "Unknown author",
+        orcid: a.author.orcid ? normalizeOrcid(a.author.orcid) : undefined,
+      })),
   }));
   const identities = enriched.flatMap((e) => e.authors.map(identityOf));
   const wallets = await resolveAuthorWallets(identities);

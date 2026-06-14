@@ -42,7 +42,7 @@ type ReceiptState =
 type GrantState =
   | { status: "idle" }
   | { status: "granting" }
-  | { status: "granted"; context: unknown; expiryUnix: number }
+  | { status: "granted"; context: unknown; expiryUnix: number; capUSDC: number }
   | { status: "error"; message: string };
 
 type FeedbackState =
@@ -355,7 +355,7 @@ export default function ResearchPage() {
           await new Promise((r) => setTimeout(r, 1200 * attempt));
         }
         const granted = await requestBudgetPermission(wc, params);
-        setGrant({ status: "granted", context: granted, expiryUnix: params.expiry });
+        setGrant({ status: "granted", context: granted, expiryUnix: params.expiry, capUSDC: params.perPeriodUSDC });
         return;
       } catch (e) {
         lastErr = e instanceof Error ? e.message : String(e);
@@ -528,7 +528,7 @@ export default function ResearchPage() {
             </>
           ) : null}
         </div>
-        {grant.status === "granted" ? <GrantCountdown expiryUnix={grant.expiryUnix} /> : null}
+        {grant.status === "granted" ? <GrantStatus expiryUnix={grant.expiryUnix} capUSDC={grant.capUSDC} /> : null}
         {revoke.status === "done" ? (
           <p className="mt-2 text-[11px] text-emerald-600">
             ✓ Budget revoked on-chain —{" "}
@@ -1193,8 +1193,15 @@ function CitedText({ text, works }: { text: string; works: { url: string; title:
   );
 }
 
-/** Live "expires in Xh Ym Zs" countdown for the granted ERC-7715 permission. */
-function GrantCountdown({ expiryUnix }: { expiryUnix: number }) {
+/** Per-run autonomous agent spend (one paper unlocked via x402). */
+const PER_RUN_USDC = 0.01;
+
+/**
+ * Granted-budget status panel: separates the CEILING you granted from what the
+ * agent actually draws per run — the recurring "did 0.5 get spent?" confusion.
+ * Shows a live expiry countdown + a usage bar (per-run sliver vs the cap).
+ */
+function GrantStatus({ expiryUnix, capUSDC }: { expiryUnix: number; capUSDC: number }) {
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   useEffect(() => {
     const t = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
@@ -1206,20 +1213,42 @@ function GrantCountdown({ expiryUnix }: { expiryUnix: number }) {
   const m = Math.floor((left % 3600) / 60);
   const s = left % 60;
   const when = new Date(expiryUnix * 1000).toLocaleString();
+  const runs = capUSDC > 0 ? Math.floor(capUSDC / PER_RUN_USDC) : 0;
+  const sliverPct = capUSDC > 0 ? Math.min(100, Math.max(2, (PER_RUN_USDC / capUSDC) * 100)) : 0;
+
+  if (expired) {
+    return (
+      <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-600 dark:border-red-900 dark:bg-red-950/30">
+        ⏱ Permission expired — grant again to keep researching.
+      </p>
+    );
+  }
+
   return (
-    <p className={`mt-2 text-[11px] ${expired ? "text-red-600" : "text-[var(--muted)]"}`}>
-      {expired ? (
-        <>⏱ Permission expired — grant again to keep researching.</>
-      ) : (
-        <>
-          ⏱ Budget active —{" "}
-          <span className="font-mono font-medium text-[var(--ink)]">
-            {h}h {m}m {s}s
-          </span>{" "}
-          left (until {when}). The agent can spend within the cap until then.
-        </>
-      )}
-    </p>
+    <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900 dark:bg-emerald-950/20">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[11px] font-medium text-[var(--ink)]">
+          💰 Granted ceiling:{" "}
+          <span className="font-mono text-emerald-700 dark:text-emerald-400">{capUSDC.toFixed(2)} USDC/day</span>
+        </span>
+        <span className="font-mono text-[11px] text-[var(--muted)]">
+          ⏱ {h}h {m}m {s}s left
+        </span>
+      </div>
+
+      {/* Usage bar: the cap is the full track; the agent only draws a tiny sliver per run. */}
+      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${sliverPct}%` }} />
+      </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-[var(--ink)]/70">
+        <b>Nothing was charged.</b> This is a spending <b>cap</b>, not a payment. The agent draws only{" "}
+        <span className="font-mono">~{PER_RUN_USDC.toFixed(2)} USDC</span> per run (to unlock one paper via x402) — about{" "}
+        <b>{runs} runs</b> before the cap is reached. Unused budget stays in your wallet; the rest expires at {when}.
+      </p>
+      <p className="mt-1 text-[10px] text-[var(--muted)]">
+        Author payouts are <i>separate</i> — paid from your wallet (gasless via 1Shot) only when you click “Pay authors”, not from this cap.
+      </p>
+    </div>
   );
 }
 
