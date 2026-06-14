@@ -71,14 +71,18 @@ const OPERATOR_ADDRESS =
   (process.env.NEXT_PUBLIC_OPERATOR_ADDRESS as `0x${string}`) ??
   "0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E";
 
-/** Narrated walkthrough of a finished result — spotlights each section in turn. */
+/** Narrated full-flow walkthrough — spotlights each part of the run in turn. */
 const TOUR_STEPS: TourStep[] = [
+  { selector: "[data-tour=stepper]", title: "The flow", narration: "Sebutkan works in three steps — grant a budget, research, then settle and pay. Let me walk you through a completed run." },
+  { selector: "[data-tour=budget]", title: "One scoped permission", narration: "First, the user signed a single E.R.C. seventy-seven-fifteen permission — a scoped U.S.D.C. budget. It's a hard cap with a live countdown, and nothing was charged up front. The funds stay in your wallet." },
+  { selector: "[data-tour=mesh]", title: "A2A redelegation", narration: "The Researcher then redelegates strictly narrower budgets to specialist agents. Authority only ever shrinks — that's the agent-to-agent coordination model." },
+  { selector: "[data-tour=ask]", title: "Ask a question", narration: "The user asks a question. The agent searches a real two-hundred-fifty-million-paper index, then reasons with Venice — private and uncensored." },
   { selector: "[data-tour=synthesis]", title: "The grounded answer", narration: "This is the grounded synthesis the agent produced — with clickable citations that link straight to each cited paper." },
   { selector: "[data-tour=summary]", title: "TL;DR", narration: "A short summary from the Summarizer agent, keeping its inline citations." },
-  { selector: "[data-tour=trace]", title: "Multi-agent trace", narration: "Here is how it worked. The Researcher redelegated strictly narrower budgets to a Planner, parallel Readers, a Fact-checker, and a Summarizer — each a real on-chain agent that earns reputation." },
-  { selector: "[data-tour=payout]", title: "Author payout plan", narration: "Every cited author gets a U.S.D.C. share, weighted by Venice embeddings. Demo wallets are shown until the author claims with their ORCID." },
-  { selector: "[data-tour=settle]", title: "Settle on-chain", narration: "One click here records the attestation and pays each author in a single transaction — no relayer fee, and the contract blocks double payment." },
-  { selector: "[data-tour=receipt]", title: "Citation receipt", narration: "Finally, an on-brand citation receipt you can download, plus a Venice-generated image and a spoken briefing." },
+  { selector: "[data-tour=trace]", title: "Multi-agent trace", narration: "Here is how it actually ran. The Researcher redelegated narrower budgets to a Planner, parallel Readers, a Fact-checker that can force a revision, and a Summarizer — each a real on-chain agent that earns reputation." },
+  { selector: "[data-tour=payout]", title: "Author payout plan", narration: "Every cited author gets a U.S.D.C. share, weighted by Venice embeddings. Demo wallets are shown until the real author claims with their ORCID." },
+  { selector: "[data-tour=settle]", title: "Settle on-chain", narration: "One click here records the attestation and pays every author in a single transaction — no relayer fee, and the contract blocks double payment." },
+  { selector: "[data-tour=receipt]", title: "Citation receipt", narration: "Finally, an on-brand citation receipt you can download, plus a Venice-generated image and a spoken briefing. That's Sebutkan — an agent that cites and pays its sources." },
 ];
 
 const RESEARCH_STEPS = [
@@ -671,7 +675,7 @@ export default function ResearchPage() {
         const phase = grant.status !== "granted" ? 0 : research.status === "done" ? 2 : 1;
         const steps = ["Grant budget", "Research", "Settle & pay"];
         return (
-          <div className="mb-8 flex flex-wrap items-center gap-1.5 text-[11px]">
+          <div data-tour="stepper" className="mb-8 flex flex-wrap items-center gap-1.5 text-[11px]">
             {steps.map((s, i) => (
               <div key={s} className="flex items-center gap-1.5">
                 <span
@@ -853,7 +857,11 @@ export default function ResearchPage() {
             </>
           ) : null}
         </div>
-        {grant.status === "granted" ? <GrantStatus expiryUnix={grant.expiryUnix} capUSDC={grant.capUSDC} /> : null}
+        {grant.status === "granted" ? (
+          <div data-tour="budget">
+            <GrantStatus expiryUnix={grant.expiryUnix} capUSDC={grant.capUSDC} />
+          </div>
+        ) : null}
         {revoke.status === "done" ? (
           <p className="mt-2 text-[11px] text-emerald-600">
             ✓ Budget revoked on-chain —{" "}
@@ -896,7 +904,7 @@ export default function ResearchPage() {
 
       {/* A2A tree — collapsed by default to keep the page focused. */}
       <Card>
-        <details>
+        <details data-tour="mesh">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
             <StepHead title="Agent mesh — redelegation (A2A)" />
             <span className="text-[11px] text-[var(--muted)]">show ▾</span>
@@ -946,7 +954,7 @@ export default function ResearchPage() {
         <p className="mt-1 text-xs text-neutral-500">
           The agent searches the corpus, reads with Venice (chat + web search), and computes who gets paid.
         </p>
-        <div className="mt-4 flex gap-2 rounded-xl border-2 border-[var(--accent)]/30 bg-[var(--accent-soft)]/30 p-2 focus-within:border-[var(--accent)]/60">
+        <div data-tour="ask" className="mt-4 flex gap-2 rounded-xl border-2 border-[var(--accent)]/30 bg-[var(--accent-soft)]/30 p-2 focus-within:border-[var(--accent)]/60">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}

@@ -73,6 +73,12 @@ export function GuidedTour({ steps, onClose }: { steps: TourStep[]; onClose: () 
       advanceRef.current();
       return;
     }
+    // Expand any collapsed <details> (the target itself or an ancestor) so it shows.
+    let d: HTMLElement | null = el;
+    while (d) {
+      if (d.tagName === "DETAILS") (d as HTMLDetailsElement).open = true;
+      d = d.parentElement;
+    }
     el.scrollIntoView({ behavior: "smooth", block: "center" });
     const t = setTimeout(() => {
       setRect(el.getBoundingClientRect());
