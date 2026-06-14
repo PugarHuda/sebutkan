@@ -12,6 +12,7 @@ import { loadHistory, saveToHistory, removeFromHistory, clearHistory, type Histo
 import { pickFlaskConnector } from "@/lib/wagmi";
 import { DownloadableReceipt } from "@/components/DownloadableReceipt";
 import { FixSepoliaRpcButton } from "@/components/FixSepoliaRpcButton";
+import { sanitizeDecimal, sanitizeInteger } from "@/lib/format";
 import { createWalletClient, custom, type WalletClient } from "viem";
 
 type ResearchState =
@@ -1190,18 +1191,6 @@ function CitedText({ text, works }: { text: string; works: { url: string; title:
       })}
     </>
   );
-}
-
-/** Keep only digits + a single decimal point; strip leading zeros (keeps "0.x"). */
-function sanitizeDecimal(v: string): string {
-  let s = v.replace(/[^\d.]/g, "");
-  const i = s.indexOf(".");
-  if (i !== -1) s = s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, "");
-  return s.replace(/^0+(?=\d)/, "");
-}
-/** Digits only; strip leading zeros. */
-function sanitizeInteger(v: string): string {
-  return v.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
 }
 
 /** Live "expires in Xh Ym Zs" countdown for the granted ERC-7715 permission. */
