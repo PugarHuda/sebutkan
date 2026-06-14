@@ -459,13 +459,13 @@ export default function ResearchPage() {
     }
   }
 
-  async function handleGrant() {
-    if (grant.status === "granting") return; // guard against double-trigger
+  async function handleGrant(): Promise<boolean> {
+    if (grant.status === "granting") return false; // guard against double-trigger
     setGrant({ status: "granting" });
     const wc = await resolveWalletClient();
     if (!wc) {
       setGrant({ status: "error", message: "Wallet not ready — reconnect MetaMask Flask and try again." });
-      return;
+      return false;
     }
     const params: BudgetParams = {
       sessionAccount: SESSION_ACCOUNT,
@@ -493,12 +493,12 @@ export default function ResearchPage() {
         setGrant({ status: "granted", context: granted, expiryUnix: params.expiry, capUSDC: params.perPeriodUSDC });
         // Persist so the active budget survives navigation / refresh.
         if (address) saveGrant({ wallet: address, context: granted, expiryUnix: params.expiry, capUSDC: params.perPeriodUSDC });
-        return;
+        return true;
       } catch (e) {
         lastErr = e instanceof Error ? e.message : String(e);
         if (isUserReject(lastErr)) {
           setGrant({ status: "error", message: "You declined the permission request in your wallet." });
-          return;
+          return false;
         }
         if (!isTransientRpc(lastErr)) break; // non-transient → don't waste retries
       }
@@ -509,6 +509,21 @@ export default function ResearchPage() {
         "then click Grant again. (It's a wallet-side network setting, not this site.)"
       : lastErr;
     setGrant({ status: "error", message });
+    return false;
+  }
+
+  /** Kutip-style "Grant & research" — grant the budget first (if needed), then run. */
+  async function handleAsk() {
+    if (!query.trim()) return;
+    if (grant.status !== "granted") {
+      if (!isConnected) {
+        setResearch({ status: "error", message: "Connect MetaMask Flask first." });
+        return;
+      }
+      const ok = await handleGrant();
+      if (!ok) return; // grant failed/declined — error already shown
+    }
+    await handleResearch();
   }
 
   /** Cancel the active budget on-chain (disableDelegation on the DelegationManager). */
@@ -646,18 +661,46 @@ export default function ResearchPage() {
             </p>
           </>
         ) : null}
-        <div className="mt-4 flex flex-wrap items-end gap-4">
-          {grant.status !== "granted" ? (
-            <>
-              <Field label="USDC / day">
+        {grant.status !== "granted" ? (
+          <div className="mt-3">
+            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">Daily budget</p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[0.1, 0.5, 1, 2].map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setPerDayInput(String(v))}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                    perDay === v
+                      ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                      : "border-[var(--rule)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                  }`}
+                >
+                  {v} USDC
+                </button>
+              ))}
+              <span className="ml-1 inline-flex items-center gap-1 text-xs text-[var(--muted)]">
+                or
                 <input
                   type="text"
                   inputMode="decimal"
                   value={perDayInput}
                   onChange={(e) => setPerDayInput(sanitizeDecimal(e.target.value))}
-                  className="w-24 rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 dark:border-neutral-700"
+                  aria-label="Custom USDC per day"
+                  className="w-16 rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 text-xs dark:border-neutral-700"
                 />
-              </Field>
+                /day
+              </span>
+            </div>
+            <p className="mt-2 text-[11px] text-[var(--muted)]">
+              This budget funds ≈ <b className="text-[var(--ink)]">{papers} papers/run</b> ·{" "}
+              <b className="text-[var(--ink)]">{perDay >= 16 ? 5 : perDay >= 8 ? 3 : 2} parallel Readers</b> · pays cited
+              authors each run · ~<b className="text-[var(--ink)]">{Math.max(1, Math.floor(perDay / 0.01))}</b> runs/day within the cap.
+            </p>
+          </div>
+        ) : null}
+        <div className="mt-4 flex flex-wrap items-end gap-4">
+          {grant.status !== "granted" ? (
+            <>
               <Field label="Expires in (h)">
                 <input
                   type="text"
@@ -804,11 +847,17 @@ export default function ResearchPage() {
             className="flex-1 rounded-lg border-0 bg-transparent px-2.5 py-2 text-sm outline-none placeholder:text-[var(--muted)]"
           />
           <button
-            onClick={handleResearch}
-            disabled={research.status === "running" || !query.trim()}
+            onClick={handleAsk}
+            disabled={research.status === "running" || grant.status === "granting" || !query.trim()}
             className="shrink-0 rounded-lg bg-[var(--accent)] px-5 py-2.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-40"
           >
-            {research.status === "running" ? "Researching…" : "❝ Research"}
+            {research.status === "running"
+              ? "Researching…"
+              : grant.status === "granting"
+                ? "Granting…"
+                : grant.status === "granted"
+                  ? "❝ Research"
+                  : `Grant ${perDay} USDC & research`}
           </button>
         </div>
 
