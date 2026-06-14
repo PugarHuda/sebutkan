@@ -545,6 +545,33 @@ export default function ResearchPage() {
         </p>
       </header>
 
+      {/* Progress stepper */}
+      {(() => {
+        const phase = grant.status !== "granted" ? 0 : research.status === "done" ? 2 : 1;
+        const steps = ["Grant budget", "Research", "Settle & pay"];
+        return (
+          <div className="mb-8 flex flex-wrap items-center gap-1.5 text-[11px]">
+            {steps.map((s, i) => (
+              <div key={s} className="flex items-center gap-1.5">
+                <span
+                  className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold ${
+                    i < phase
+                      ? "bg-emerald-500 text-white"
+                      : i === phase
+                        ? "bg-[var(--accent)] text-white"
+                        : "bg-[var(--rule)] text-[var(--muted)]"
+                  }`}
+                >
+                  {i < phase ? "✓" : i + 1}
+                </span>
+                <span className={i === phase ? "font-medium text-[var(--ink)]" : "text-[var(--muted)]"}>{s}</span>
+                {i < 2 ? <span className="mx-1 text-[var(--muted)]">→</span> : null}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* 1. Connect */}
       <Card>
         <StepHead n={1} title="Connect wallet (MetaMask Flask)">
@@ -605,35 +632,43 @@ export default function ResearchPage() {
       {/* 2. Grant */}
       <Card>
         <StepHead n={2} title="Grant a periodic USDC budget (ERC-7715)" />
-        <p className="mt-1 text-xs text-neutral-500">
-          One signature creates an ERC-7710 delegation — a <b>daily spending ceiling</b>, not an
-          up-front charge. Nothing leaves your wallet now; the agent only spends a tiny micropayment
-          (~0.01 USDC) per run when it buys a paper, and never beyond this cap.
-        </p>
-        <p className="mt-2 rounded-md bg-[var(--accent-soft)] px-3 py-2 text-[11px] text-[var(--ink)]/75">
-          💡 A bigger budget buys <b>deeper research</b>: it scales the agent fan-out
-          ({perDay >= 16 ? 5 : perDay >= 8 ? 3 : 2} parallel Readers at {perDay} USDC) and pays cited
-          authors a larger share — so more budget = more thorough answers + more generous payouts.
-        </p>
+        {grant.status !== "granted" ? (
+          <>
+            <p className="mt-1 text-xs text-neutral-500">
+              One signature creates an ERC-7710 delegation — a <b>daily spending ceiling</b>, not an
+              up-front charge. Nothing leaves your wallet now; the agent only spends a tiny micropayment
+              (~0.01 USDC) per run when it buys a paper, and never beyond this cap.
+            </p>
+            <p className="mt-2 rounded-md bg-[var(--accent-soft)] px-3 py-2 text-[11px] text-[var(--ink)]/75">
+              💡 A bigger budget buys <b>deeper research</b>: it scales the agent fan-out
+              ({perDay >= 16 ? 5 : perDay >= 8 ? 3 : 2} parallel Readers at {perDay} USDC) and pays cited
+              authors a larger share — so more budget = more thorough answers + more generous payouts.
+            </p>
+          </>
+        ) : null}
         <div className="mt-4 flex flex-wrap items-end gap-4">
-          <Field label="USDC / day">
-            <input
-              type="text"
-              inputMode="decimal"
-              value={perDayInput}
-              onChange={(e) => setPerDayInput(sanitizeDecimal(e.target.value))}
-              className="w-24 rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 dark:border-neutral-700"
-            />
-          </Field>
-          <Field label="Expires in (h)">
-            <input
-              type="text"
-              inputMode="numeric"
-              value={expiryHoursInput}
-              onChange={(e) => setExpiryHoursInput(sanitizeInteger(e.target.value))}
-              className="w-24 rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 dark:border-neutral-700"
-            />
-          </Field>
+          {grant.status !== "granted" ? (
+            <>
+              <Field label="USDC / day">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={perDayInput}
+                  onChange={(e) => setPerDayInput(sanitizeDecimal(e.target.value))}
+                  className="w-24 rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 dark:border-neutral-700"
+                />
+              </Field>
+              <Field label="Expires in (h)">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={expiryHoursInput}
+                  onChange={(e) => setExpiryHoursInput(sanitizeInteger(e.target.value))}
+                  className="w-24 rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 dark:border-neutral-700"
+                />
+              </Field>
+            </>
+          ) : null}
           <button
             onClick={handleGrant}
             disabled={!isConnected || onWrongChain || grant.status === "granting" || grant.status === "granted"}
@@ -760,20 +795,20 @@ export default function ResearchPage() {
         <p className="mt-1 text-xs text-neutral-500">
           The agent searches the corpus, reads with Venice (chat + web search), and computes who gets paid.
         </p>
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex gap-2 rounded-xl border-2 border-[var(--accent)]/30 bg-[var(--accent-soft)]/30 p-2 focus-within:border-[var(--accent)]/60">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleResearch()}
             placeholder="e.g. What are the most effective carbon capture methods?"
-            className="flex-1 rounded-lg border border-neutral-300 bg-transparent px-3.5 py-2.5 text-sm dark:border-neutral-700"
+            className="flex-1 rounded-lg border-0 bg-transparent px-2.5 py-2 text-sm outline-none placeholder:text-[var(--muted)]"
           />
           <button
             onClick={handleResearch}
             disabled={research.status === "running" || !query.trim()}
-            className="rounded-lg bg-neutral-900 px-5 py-2.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-40 dark:bg-white dark:text-black"
+            className="shrink-0 rounded-lg bg-[var(--accent)] px-5 py-2.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-40"
           >
-            {research.status === "running" ? "Researching…" : "Research"}
+            {research.status === "running" ? "Researching…" : "❝ Research"}
           </button>
         </div>
 
@@ -1241,27 +1276,26 @@ export default function ResearchPage() {
                 <p className="mt-2 text-[11px] text-[var(--muted)]">⟳ Recording agent reputation on-chain (ERC-8004)…</p>
               ) : null}
               {feedback.status === "done" ? (
-                <div className="mt-2 rounded-md border border-[var(--rule)] p-3 text-[11px]">
-                  <span className="font-medium text-[var(--accent)]">Agent reputation updated (ERC-8004)</span>
-                  <ul className="mt-1 space-y-0.5">
-                    {feedback.results.map((r) => (
-                      <li key={r.agent} className="flex items-center gap-2">
-                        <span className="capitalize">{r.agent}</span>
-                        {r.txHash ? (
-                          <a
-                            href={`https://sepolia.etherscan.io/tx/${r.txHash}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="font-mono text-emerald-600 underline"
-                          >
-                            +1 rep ↗
-                          </a>
-                        ) : (
-                          <span className="text-[var(--muted)]">{r.error}</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <span className="font-medium text-[var(--accent)]">ERC-8004 reputation +1:</span>
+                  {feedback.results.map((r) =>
+                    r.txHash ? (
+                      <a
+                        key={r.agent}
+                        href={`https://sepolia.etherscan.io/tx/${r.txHash}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={`${r.agent} +1 rep — view tx`}
+                        className="rounded-full bg-emerald-100 px-2 py-0.5 font-medium capitalize text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300"
+                      >
+                        {r.agent} ↗
+                      </a>
+                    ) : (
+                      <span key={r.agent} className="rounded-full bg-neutral-100 px-2 py-0.5 capitalize text-[var(--muted)] dark:bg-neutral-800">
+                        {r.agent} ✕
+                      </span>
+                    ),
+                  )}
                 </div>
               ) : null}
               {feedback.status === "error" ? (
