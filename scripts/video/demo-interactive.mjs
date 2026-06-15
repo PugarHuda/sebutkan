@@ -11,6 +11,7 @@ import { chromium } from "playwright";
 import ffmpegPath from "ffmpeg-static";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 const APP = process.env.BASE_URL ?? "http://localhost:3000";
 const VBASE = process.env.VENICE_BASE_URL ?? "https://api.venice.ai/api/v1";
@@ -81,6 +82,30 @@ const CUES = [
 mkdirSync("video-out/demo-audio", { recursive: true });
 mkdirSync("video-out/ivid", { recursive: true });
 
+// Live 1Shot relayer API call (read-only) → render as a terminal page + insert a cue.
+console.log("calling 1Shot relayer (live)…");
+const oneRpc = async (method, params) => {
+  const r = await fetch("https://relayer.1shotapi.com/relayers", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
+  const j = await r.json(); if (j.error) throw new Error(j.error.message); return j.result;
+};
+const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+let caps, fee;
+try { caps = await oneRpc("relayer_getCapabilities", ["8453"]); } catch (e) { caps = { error: String(e).slice(0, 80) }; }
+try { fee = await oneRpc("relayer_getFeeData", { chainId: "8453", token: USDC_BASE }); } catch (e) { fee = { error: String(e).slice(0, 80) }; }
+const esc = (s) => s.replace(/</g, "&lt;");
+const oneHtml = `<!doctype html><html><body style="margin:0;background:#0d1117;color:#c9d1d9;font:15px/1.6 Consolas,'Cascadia Code',monospace;padding:46px 56px;height:100vh;box-sizing:border-box">
+<div style="color:#7ee787;font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px">1Shot Permissionless Relayer · Base mainnet (8453) · live</div>
+<div><span style="color:#58a6ff">$</span> POST relayer.1shotapi.com → <span style="color:#d2a8ff">relayer_getCapabilities</span>(["8453"])</div>
+<pre style="color:#7ee787;margin:6px 0 22px;white-space:pre-wrap">${esc(JSON.stringify(caps, null, 2))}</pre>
+<div><span style="color:#58a6ff">$</span> POST relayer.1shotapi.com → <span style="color:#d2a8ff">relayer_getFeeData</span>({ chainId:"8453", token: USDC })</div>
+<pre style="color:#7ee787;margin:6px 0 22px;white-space:pre-wrap">${esc(JSON.stringify(fee, null, 2))}</pre>
+<div style="color:#8b949e">✓ live response · gas paid in USDC · this is the relayer our author payouts go through</div>
+</body></html>`;
+writeFileSync("video-out/oneshot.html", oneHtml);
+const ONESHOT_URL = pathToFileURL(`${process.cwd()}/video-out/oneshot.html`).href;
+CUES.splice(9, 0, { kind: "file", url: ONESHOT_URL, points: ["targetAddress"], text: "And here's the 1Shot relayer API itself, called live. We ask the Base-mainnet relayer for its capabilities and a fee quote — it returns the fee collector, the delegate target address, and the stablecoins it accepts. This is the gas-in-stablecoins relayer our author payouts go through." });
+console.log(`✓ 1Shot live: targetAddress ${caps?.["8453"]?.targetAddress ?? "?"}`);
+
 console.log("generating narration…");
 for (let i = 0; i < CUES.length; i++) writeFileSync(`video-out/demo-audio/${String(i).padStart(2, "0")}.mp3`, await tts(CUES[i].text));
 const durs = CUES.map((_, i) => audioDuration(`video-out/demo-audio/${String(i).padStart(2, "0")}.mp3`));
@@ -112,10 +137,12 @@ for (let i = 0; i < CUES.length; i++) {
     await page.goto(`${APP}/dashboard`, { waitUntil: "domcontentloaded" });
     await page.evaluate(([k, v]) => localStorage.setItem(k, v), [HISTORY_KEY, JSON.stringify([entry])]);
   }
-  const target = c.kind === "result" ? `${APP}/dashboard/result/${id}` : c.kind === "ext" ? c.url : `${APP}${c.url}`;
-  await page.goto(target, { waitUntil: c.kind === "ext" ? "domcontentloaded" : "networkidle", timeout: 35000 }).catch(() => {});
-  if (c.kind !== "ext") await page.addStyleTag({ content: HIDE }).catch(() => {});
-  else { await sleep(2200); for (const t of ["Accept", "I Agree", "Got it", "Accept all"]) { await page.getByRole("button", { name: t }).first().click({ timeout: 800 }).catch(() => {}); } }
+  const external = c.kind === "ext" || c.kind === "file";
+  const target = c.kind === "result" ? `${APP}/dashboard/result/${id}` : external ? c.url : `${APP}${c.url}`;
+  await page.goto(target, { waitUntil: external ? "domcontentloaded" : "networkidle", timeout: 35000 }).catch(() => {});
+  if (!external) await page.addStyleTag({ content: HIDE }).catch(() => {});
+  else if (c.kind === "ext") { await sleep(2200); for (const t of ["Accept", "I Agree", "Got it", "Accept all"]) { await page.getByRole("button", { name: t }).first().click({ timeout: 800 }).catch(() => {}); } }
+  else await sleep(900);
   if (c.scrollTo) { await page.getByText(c.scrollTo, { exact: false }).first().scrollIntoViewIfNeeded({ timeout: 4000 }).catch(() => {}); await sleep(500); }
   if (c.expandSel) { await page.locator(c.expandSel).first().click({ timeout: 3000 }).catch(() => {}); await sleep(700); }
   await ensureCursor(page);
