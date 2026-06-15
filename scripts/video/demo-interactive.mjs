@@ -56,6 +56,19 @@ async function ensureCursor(page) {
 async function setCursor(page, x, y) {
   await page.evaluate(([x, y]) => { const c = document.getElementById("__demo_cursor"); if (c) { c.style.left = x + "px"; c.style.top = y + "px"; } }, [x, y]).catch(() => {});
 }
+// Burned-in subtitle bar (bottom-center), persists through the cue.
+async function setCaption(page, text) {
+  await page.evaluate((t) => {
+    let el = document.getElementById("__demo_caption");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "__demo_caption";
+      el.style.cssText = "position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:2147483646;max-width:1060px;width:calc(100% - 90px);background:rgba(13,17,23,.86);color:#fff;font:500 17px/1.42 system-ui,-apple-system,Segoe UI,sans-serif;padding:12px 22px;border-radius:12px;text-align:center;box-shadow:0 8px 28px rgba(0,0,0,.32);pointer-events:none;box-sizing:border-box";
+      (document.body || document.documentElement).appendChild(el);
+    }
+    el.textContent = t;
+  }, text).catch(() => {});
+}
 
 const BASESCAN = "https://basescan.org/tx/0x6f4c8d539f9ea34f7e6e0d0730e4ae04fec1d986e5d0641b8b36ab00c6e8480c";
 const ETHERSCAN = "https://sepolia.etherscan.io/tx/0xc61adf4ee665794ef6a2588c21dd2469ff6d9855129e9d2d0501d94bd1e1c6c8";
@@ -74,7 +87,7 @@ const CUES = [
   { kind: "ext", url: ETHERSCAN, points: ["0xc61adf4e"], text: "And every citation is recorded on-chain. This is a real attestAndSplit transaction on Etherscan — the attestation and the author payment, in a single transaction." },
   { kind: "url", url: "/dashboard/agents", points: ['[data-tour="agents-list"]'], text: "The Agents page shows the five specialists, each a real on-chain principal that earns reputation in the E.R.C. eighty-oh-four registry." },
   { kind: "url", url: "/dashboard/bounties", points: ['[data-tour="bounty-form"]'], type: { sel: 'input[placeholder*="perovskite"]', text: "stable diffusion safety" }, text: "Anyone can sponsor a research topic with U.S.D.C. When Sebutkan satisfies it, the deposit is paid straight to the cited authors, with no platform fee." },
-  { kind: "url", url: "/dashboard/claim", scrollTo: "Verify your ORCID", points: ["Verify your ORCID"], type: { sel: 'input[placeholder*="0000"]', text: "0000-0002-1825-0097" }, text: "Authors get paid on the Claim page: prove your ORCID, bind your wallet with one signature, and withdraw — plus a twelve-percent citation-loyalty yield." },
+  { kind: "url", url: "/dashboard/claim", scrollTo: "Verify your ORCID", verifyClaim: "0000-0002-1825-0097", points: ["Your earnings"], text: "Authors get paid on the Claim page. They prove their ORCID — here, the demo verify — and their owed balance appears, ready to withdraw, plus a twelve-percent citation-loyalty yield that ticks up live." },
   { kind: "url", url: "/dashboard/activity", points: ["Top cited authors"], text: "And it's all public. Activity is a live read of every attestation on-chain, with a leaderboard of the most-cited authors." },
   { kind: "url", url: "/", scrollTo: "Every citation, a real payment", points: ["Run a query"], text: "That's the whole loop. Sebutkan — an agent that cites and pays its sources. Every citation, a real payment. Try it at sebutkan dot vercel dot app." },
 ];
@@ -148,6 +161,7 @@ for (let i = 0; i < CUES.length; i++) {
   await ensureCursor(page);
   let cur = { x: 640, y: 380 };
   await setCursor(page, cur.x, cur.y);
+  await setCaption(page, c.text);
   await sleep(350);
 
   const tReady = Date.now();
@@ -168,6 +182,24 @@ for (let i = 0; i < CUES.length; i++) {
     await glide(x, y);
     return { x, y };
   };
+
+  // Claim flow: type the ORCID, demo-verify it, then the "Your earnings" panel appears.
+  if (c.verifyClaim) {
+    const inp = page.locator('input[placeholder*="0000"]').first();
+    const box = await inp.boundingBox().catch(() => null);
+    if (box) { await glide(box.x + 24, box.y + box.height / 2); await inp.click().catch(() => {}); await inp.fill(c.verifyClaim).catch(() => {}); await sleep(500); }
+    const verify = page.getByText("Demo verify", { exact: false }).first();
+    const vb = await verify.boundingBox().catch(() => null);
+    if (vb) { await glide(vb.x + vb.width / 2, vb.y + vb.height / 2); }
+    await verify.click({ timeout: 4000 }).catch(() => {});
+    await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+    await page.goto(`${APP}/dashboard/claim`, { waitUntil: "networkidle", timeout: 20000 }).catch(() => {});
+    await page.addStyleTag({ content: HIDE }).catch(() => {});
+    await page.getByText("Your earnings", { exact: false }).first().scrollIntoViewIfNeeded({ timeout: 4000 }).catch(() => {});
+    cur = { x: 640, y: 380 };
+    await ensureCursor(page); await setCursor(page, cur.x, cur.y); await setCaption(page, c.text);
+    await sleep(500);
+  }
 
   for (const p of c.points) { await pointAt(p); await sleep(750); }
   if (c.click) { const at = await pointAt(c.click); if (at) { await page.mouse.click(at.x, at.y).catch(() => {}); await sleep(500); } }
