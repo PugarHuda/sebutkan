@@ -38,7 +38,7 @@ export function RoomHero() {
       raf = requestAnimationFrame(() => {
         const dx = (e.clientX / window.innerWidth - 0.5) * -22;
         const dy = (e.clientY / window.innerHeight - 0.5) * -14;
-        el.style.transform = `scale(1.08) translate3d(${dx}px, ${dy}px, 0)`;
+        el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
       });
     };
     window.addEventListener("pointermove", onMove, { passive: true });
@@ -50,12 +50,16 @@ export function RoomHero() {
 
   return (
     <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-20 h-[760px] overflow-hidden sm:h-[680px]">
-      {/* the illustration (parallax layer) */}
-      <div
-        ref={ref}
-        className="absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out [will-change:transform]"
-        style={{ backgroundImage: "url('/hero-room-2.webp')", transform: "scale(1.08)" }}
-      />
+      {/* the illustration: parallax (outer, cursor) + Ken Burns drift (inner, always moving) */}
+      <div ref={ref} className="absolute inset-0 transition-transform duration-300 ease-out [will-change:transform]">
+        <div
+          className="ken-burns absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/hero-room-2.webp')" }}
+        />
+      </div>
+
+      {/* warm desk-lamp glow (breathes) */}
+      <div className="lamp-glow absolute right-[14%] top-[44%] h-44 w-44" />
 
       {/* warm light beam sweeping from the window */}
       <div className="light-ray pointer-events-none absolute -top-24 right-[8%] h-[140%] w-64 origin-top" />

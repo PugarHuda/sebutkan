@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LandingStats } from "@/components/LandingStats";
 import { AgentTracePreview } from "@/components/AgentTracePreview";
+import { ClosingBand } from "@/components/ClosingBand";
 import { RoomHero } from "@/components/RoomHero";
 import { RotatingQuery } from "@/components/RotatingQuery";
 import { Reveal } from "@/components/Reveal";
@@ -105,7 +106,7 @@ export default function Home() {
             },
           ].map((s, i) => (
             <Reveal key={s.n} delay={i * 0.12} className="flex flex-1 items-stretch">
-              <div className="flex flex-1 flex-col rounded-xl border border-[var(--rule)] bg-[var(--paper-2)] p-5 text-left transition hover:-translate-y-0.5 hover:border-[var(--accent)]/40 hover:shadow-lg">
+              <div className="flex flex-1 flex-col rounded-xl border border-[var(--rule)] bg-[var(--paper-2)] p-5 text-left transition hover:-translate-y-0.5 hover:border-[var(--accent)]/40 hover:shadow-[0_16px_40px_-16px_color-mix(in_srgb,var(--gold)_55%,transparent)]">
                 <div className="flex items-center gap-2.5">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent-soft)] text-lg">{s.icon}</span>
                   <div>
@@ -139,7 +140,7 @@ export default function Home() {
             { icon: "⛓️", t: "Every citation is a payment", d: "AI scrapes human knowledge and pays nothing. Sebutkan flips that: each citation is a real on-chain USDC payment to its author." },
           ].map((v, i) => (
             <Reveal key={v.t} delay={i * 0.1}>
-              <div className="h-full rounded-xl border border-[var(--rule)] bg-[var(--paper-2)] p-5 transition hover:-translate-y-0.5 hover:border-[var(--accent)]/40 hover:shadow-lg">
+              <div className="h-full rounded-xl border border-[var(--rule)] bg-[var(--paper-2)] p-5 transition hover:-translate-y-0.5 hover:border-[var(--accent)]/40 hover:shadow-[0_16px_40px_-16px_color-mix(in_srgb,var(--gold)_55%,transparent)]">
                 <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-xl">{v.icon}</span>
                 <h3 className="serif mt-3 text-base font-semibold">{v.t}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-[var(--ink)]/70">{v.d}</p>
@@ -166,6 +167,11 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {/* Closing CTA band */}
+      <Reveal className="mt-16 w-full max-w-5xl">
+        <ClosingBand />
+      </Reveal>
 
       <footer className="mt-16 text-xs text-[var(--muted)]">
         Built for the MetaMask Smart Accounts Kit × 1Shot × Venice AI Dev Cook-Off ·{" "}
