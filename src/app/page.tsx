@@ -85,6 +85,7 @@ export default function Home() {
           {[
             {
               icon: "🔑",
+              img: "/step-grant.webp",
               n: "I",
               t: "Grant once",
               d: "Sign one ERC-7715 Advanced Permission — a periodic USDC budget the agent can never exceed. You keep custody.",
@@ -92,6 +93,7 @@ export default function Home() {
             },
             {
               icon: "🤖",
+              img: "/step-agents.webp",
               n: "II",
               t: "The agents work",
               d: "The Researcher buys papers via x402, then redelegates strictly narrower budgets to a Planner, parallel Readers, a Fact-checker & a Summarizer — all reasoning with Venice.",
@@ -99,6 +101,7 @@ export default function Home() {
             },
             {
               icon: "💸",
+              img: "/step-pay.webp",
               n: "III",
               t: "Authors are paid",
               d: "Every citation pays its author — gasless via 1Shot. Unclaimed shares wait on-chain until they claim with ORCID.",
@@ -106,17 +109,29 @@ export default function Home() {
             },
           ].map((s, i) => (
             <Reveal key={s.n} delay={i * 0.12} className="flex flex-1 items-stretch">
-              <div className="flex flex-1 flex-col rounded-xl border border-[var(--rule)] bg-[var(--paper-2)] p-5 text-left transition hover:-translate-y-0.5 hover:border-[var(--accent)]/40 hover:shadow-[0_16px_40px_-16px_color-mix(in_srgb,var(--gold)_55%,transparent)]">
+              <div className="group flex flex-1 flex-col overflow-hidden rounded-xl border border-[var(--rule)] bg-[var(--paper-2)] text-left transition hover:-translate-y-0.5 hover:border-[var(--accent)]/40 hover:shadow-[0_16px_40px_-16px_color-mix(in_srgb,var(--gold)_55%,transparent)]">
+                {/* anime mini-scene (Venice-generated) */}
+                <div className="relative h-28 overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={s.img}
+                    alt=""
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0" style={{ background: "linear-gradient(to top, var(--paper-2), transparent 55%)" }} />
+                  <span className="absolute left-2.5 top-2.5 rounded-full bg-[var(--paper-2)]/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--accent)] backdrop-blur-sm">
+                    Step {s.n}
+                  </span>
+                </div>
+                <div className="flex flex-1 flex-col p-5 pt-3">
                 <div className="flex items-center gap-2.5">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent-soft)] text-lg">{s.icon}</span>
-                  <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--accent)]">Step {s.n}</div>
-                    <h3 className="serif text-lg font-semibold leading-tight">{s.t}</h3>
-                  </div>
+                  <h3 className="serif text-lg font-semibold leading-tight">{s.t}</h3>
                 </div>
                 <p className="mt-3 flex-1 text-sm leading-relaxed text-[var(--ink)]/75">{s.d}</p>
                 <div className="mt-3 inline-flex w-fit rounded-full bg-[var(--paper)] px-2.5 py-1 font-mono text-[10px] text-[var(--muted)]">
                   {s.tag}
+                </div>
                 </div>
               </div>
               {i < 2 ? (
