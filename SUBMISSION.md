@@ -8,7 +8,9 @@ a real on-chain attestation of every citation and an A2A mesh of redelegated spe
 
 - **Live app:** https://sebutkan.vercel.app
 - **Repo:** https://github.com/PugarHuda/sebutkan
-- **Demo video:** _<paste link>_ — must show MetaMask Smart Accounts Kit working in the main flow + 1Shot usage.
+- **Demo video (walkthrough):** https://sebutkan.vercel.app/demo.mp4
+- **Pitch video:** https://sebutkan.vercel.app/pitch.mp4
+  - _Both show the MetaMask Smart Accounts Kit working in the main flow + 1Shot usage. If HackQuest requires a YouTube/Loom link, upload `public/demo.mp4` there and swap this URL._
 
 ---
 
