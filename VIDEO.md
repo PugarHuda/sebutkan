@@ -1,8 +1,25 @@
 # Video assets — Sebutkan
 
-Two videos for the submission. I can't render `.mp4` files, but everything below is
-ready to **screen-record** as-is. Subtitle files live in `public/` (`pitch.vtt`,
-`pitch.srt`, `demo.srt`) — drop them into any editor (or YouTube "upload subtitles").
+**Ready-made MP4s (generated, with natural-voice narration):**
+- `public/pitch.mp4` — ~2:57, 1280×720, the narrated deck with on-screen subtitles.
+- `public/demo.mp4` — ~1:49, 1280×720, a narrated walkthrough of the real app.
+
+Both are produced fully from code — **Venice TTS** audio (kokoro) muxed onto
+**Playwright** screenshots with **ffmpeg**. Regenerate any time:
+
+```bash
+npm i --no-save playwright ffmpeg-static && npx playwright install chromium
+npm run dev                                   # in another terminal (:3000)
+node --env-file=.env scripts/video/gen-audio.mjs   # pitch narration → video-out/audio
+node scripts/video/shoot.mjs                        # pitch slides    → video-out/frames
+node scripts/video/build.mjs                        # → video-out/pitch.mp4
+node --env-file=.env scripts/video/demo.mjs         # demo frames+audio
+FRAMES_DIR=video-out/demo-frames AUDIO_DIR=video-out/demo-audio OUT=video-out/demo.mp4 SEG_PREFIX=dseg node scripts/video/build.mjs
+```
+
+Everything below is also ready to **screen-record** if you'd rather capture live
+(e.g. to show real wallet signatures). Subtitle files live in `public/`
+(`pitch.vtt`, `pitch.srt`, `demo.srt`).
 
 ---
 
