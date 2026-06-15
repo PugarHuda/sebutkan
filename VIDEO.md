@@ -46,10 +46,19 @@ so viewers always see what's being explained.
 
 For the grant + settle + claim steps that need wallet signatures, follow the table below.
 
-## 2. Live demo video (~3:00) — screen-record the real app
+## 2. Live demo video (~4:10) — screen-record the real app, every feature
 
-Record the real flow at `https://sebutkan.vercel.app`. Narration + on-screen cues
-below; the matching captions are in `public/demo.srt`.
+Two ways, both covered by the captions in `public/demo.srt` (15 cues, **every
+feature**, ~4:10):
+
+- **Easiest — record the interactive tour.** On the dashboard click **▶ Take the
+  guided tour**: it navigates every section on its own, **points at each feature**
+  with an animated pointer, and **narrates** it in a natural voice with on-screen
+  captions already burned in. Then do the deep-dive with **▶ Explain this result**
+  after a run. This alone is a complete, captioned, pointer-guided product demo.
+- **Polished — narrate the real flow yourself** using the table below (do the
+  grant/settle/claim live for the wallet-signature moments). `demo.srt` is the
+  matching voiceover script for all features.
 
 | Time | Screen | Say (narration) |
 |---|---|---|

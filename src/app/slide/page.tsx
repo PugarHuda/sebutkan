@@ -193,7 +193,7 @@ const SLIDES: { id: string; render: React.ReactNode }[] = [
           <Stat v="6" k="contracts live" />
           <Stat v="112" k="tests green" />
           <Stat v="5" k="on-chain agents" />
-          <Stat v="19+" k="on-chain attestations" />
+          <Stat v="21" k="on-chain attestations" />
         </div>
         <p className="mt-6 text-sm text-[var(--ink)]/75">
           1Shot 7710 + 7702 relay on Base:{" "}
@@ -223,6 +223,27 @@ const SLIDES: { id: string; render: React.ReactNode }[] = [
             </li>
           ))}
         </ul>
+      </div>
+    ),
+  },
+  {
+    id: "demo",
+    render: (
+      <div className="max-w-2xl">
+        <Kicker>See it yourself</Kicker>
+        <h2 className="serif mt-4 text-4xl font-semibold leading-tight">A live app that explains itself.</h2>
+        <p className="mt-5 text-lg leading-relaxed text-[var(--ink)]/75">
+          Open the dashboard and hit <b>&ldquo;Take the guided tour&rdquo;</b> — an interactive, narrated walkthrough
+          that <b>points at and explains every feature</b>, navigating section to section on its own. Each research
+          run also has an <b>&ldquo;Explain this result&rdquo;</b> deep-dive. Cozy, anime-styled, and fully on-chain.
+        </p>
+        <div className="mt-6 flex flex-wrap gap-2 text-sm">
+          {["Interactive guided tour", "Pointer + natural voice", "Live on-chain stats", "Searchable library", "Self-narrating"].map((t) => (
+            <span key={t} className="rounded-md border border-[var(--rule)] bg-[var(--paper-2)] px-3 py-1.5">
+              {t}
+            </span>
+          ))}
+        </div>
       </div>
     ),
   },
@@ -271,6 +292,8 @@ const NARRATION: Record<string, string> = {
     "And it's all real. No mocks in the critical path. Six contracts live, a hundred and twelve tests green, five on-chain agents, and a real 1Shot relay executed on Base mainnet.",
   tracks:
     "One product covers every track: Best Agent, Best A2A coordination, Best x-four-oh-two and E.R.C. seventy-seven-ten, Best use of Venice A.I., and Best 1Shot Relayer.",
+  demo:
+    "And you can see it all yourself. The live app has an interactive guided tour that narrates and points at every feature, navigating section to section on its own — and each research run explains itself, step by step. It's cozy, anime-styled, and fully on-chain.",
   close:
     "Sebutkan — an agent that pays the people it learns from. Try it live at sebutkan dot vercel dot app. Thank you.",
 };
