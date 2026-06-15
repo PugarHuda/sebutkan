@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LandingStats } from "@/components/LandingStats";
 import { AgentTracePreview } from "@/components/AgentTracePreview";
 import { RoomHero } from "@/components/RoomHero";
+import { RotatingQuery } from "@/components/RotatingQuery";
 import { Reveal } from "@/components/Reveal";
 
 export default function Home() {
@@ -37,10 +38,12 @@ export default function Home() {
             author it cites. Author payouts are gasless (relayed by 1Shot). Non-custodial.
           </p>
 
-          <div className="mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+          <RotatingQuery />
+
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
             <Link
               href="/dashboard"
-              className="group rounded-md bg-[var(--accent)] px-6 py-3 text-sm font-medium text-white transition hover:opacity-90"
+              className="group rounded-md bg-[var(--accent)] px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:opacity-95 hover:shadow-[0_10px_28px_-8px_color-mix(in_srgb,var(--gold)_70%,transparent)]"
             >
               Open the dashboard <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
             </Link>

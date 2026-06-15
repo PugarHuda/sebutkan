@@ -12,6 +12,8 @@
   --accent: #0b6e4f; /* deep emerald */
   --accent-soft: #e7f0ea; /* emerald wash */
   --rule: #e6e2d8; /* hairline */
+  --gold: #c98a2b; /* warm window light */
+  --gold-soft: #f6ecd6; /* warm wash */
 }
 
 @theme inline {
@@ -185,17 +187,48 @@ body {
   .dust { animation: none; opacity: 0; }
 }
 
+/* ── Warm window-light ray sweeping across the hero ──────────────────────── */
+@keyframes ray-breathe {
+  0%, 100% { opacity: 0.22; transform: translateX(-3%) rotate(20deg) scaleY(1); }
+  50%      { opacity: 0.5; transform: translateX(3%) rotate(20deg) scaleY(1.06); }
+}
+.light-ray {
+  background: linear-gradient(100deg, transparent 34%, rgba(255, 226, 156, 0.6) 50%, transparent 66%);
+  filter: blur(16px);
+  animation: ray-breathe 8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .light-ray { animation: none; opacity: 0.3; }
+}
+
 /* ── Agent-trace preview: steps light up in sequence ─────────────────────── */
 @keyframes trace-pulse {
-  0%   { border-color: var(--rule); background: var(--paper); color: var(--muted); }
-  4%   { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
-  16%  { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
-  26%  { border-color: var(--rule); background: var(--paper); color: var(--muted); }
-  100% { border-color: var(--rule); background: var(--paper); color: var(--muted); }
+  0%   { border-color: var(--rule); background: var(--paper); transform: translateX(0); box-shadow: none; }
+  4%   { border-color: var(--accent); background: var(--accent-soft); transform: translateX(5px); box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 22%, transparent); }
+  17%  { border-color: var(--accent); background: var(--accent-soft); transform: translateX(5px); box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 22%, transparent); }
+  28%  { border-color: var(--rule); background: var(--paper); transform: translateX(0); box-shadow: none; }
+  100% { border-color: var(--rule); background: var(--paper); transform: translateX(0); box-shadow: none; }
 }
 .trace-step {
   animation: trace-pulse 6s linear infinite;
 }
+/* a glowing dot travelling down the connector line */
+@keyframes trace-travel {
+  0%   { top: 2%; opacity: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { top: 98%; opacity: 0; }
+}
+.trace-travel {
+  animation: trace-travel 6s ease-in-out infinite;
+}
+/* payout bars grow in once on reveal */
+@keyframes bar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.bar-grow {
+  transform-origin: left center;
+  animation: bar-grow 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 @media (prefers-reduced-motion: reduce) {
-  .trace-step { animation: none; }
+  .trace-step, .trace-travel, .bar-grow { animation: none; }
+  .bar-grow { transform: none; }
 }

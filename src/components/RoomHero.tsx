@@ -57,6 +57,9 @@ export function RoomHero() {
         style={{ backgroundImage: "url('/hero-room-2.webp')", transform: "scale(1.08)" }}
       />
 
+      {/* warm light beam sweeping from the window */}
+      <div className="light-ray pointer-events-none absolute -top-24 right-[8%] h-[140%] w-64 origin-top" />
+
       {/* floating dust in the window light */}
       {DUST.map((d, i) => (
         <span
