@@ -63,8 +63,10 @@ const CUES = [
   { kind: "url", url: "/", points: ["Open the dashboard"], text: "This is Sebutkan — live. An autonomous A.I. research agent that cites and pays the human authors it cites." },
   { kind: "url", url: "/", scrollTo: "From a question to a payment", points: ["From a question to a payment", "Settle"], text: "Right on the landing you can watch one run, end to end: a Planner, parallel Readers, a Citation-Matcher, and a Fact-checker — then the author payout." },
   { kind: "url", url: "/dashboard", points: ['[data-tour="ov-stats"]'], text: "The dashboard opens on live on-chain stats — attestations, U.S.D.C. attributed, and authors cited — all read straight from Sepolia." },
-  { kind: "url", url: "/dashboard/research", scrollTo: "Grant a periodic", points: ["0.5 USDC"], click: "0.5 USDC", text: "Research is the core. You connect MetaMask Flask and grant one E.R.C. seventy-seven-fifteen budget the agent can never exceed — a hard cap — then pick how much and ask a question." },
-  { kind: "result", points: ["Synthesis"], text: "Here's a real run. The agent searched OpenAlex's two-hundred-fifty-million-paper index and synthesized a grounded answer with Venice, citing each source." },
+  { kind: "url", url: "/dashboard/research", scrollTo: "Grant a periodic", points: ["0.5 USDC"], click: "0.5 USDC", text: "Research is the core. You connect MetaMask Flask and grant one E.R.C. seventy-seven-fifteen budget the agent can never exceed — a hard cap — then pick a budget for this run." },
+  { kind: "url", url: "/dashboard/research", scrollTo: "Agent mesh", expandSel: '[data-tour="mesh"] summary', points: ['[data-tour="mesh"]'], text: "Here's the process. Before it runs, the Researcher builds a mesh: it redelegates a strictly narrower slice of the budget to a Planner, parallel Readers, a Fact-checker, and a Summarizer — authority only ever shrinks." },
+  { kind: "url", url: "/dashboard/research", scrollTo: "Ask a research question", type: { sel: '[data-tour="ask"] input, [data-tour="ask"] textarea', text: "What drives perovskite solar cell stability?" }, points: ['[data-tour="ask"]'], text: "Then you ask your question, and the agents go to work — searching OpenAlex, reading the papers with Venice, matching citations, and fact-checking the answer." },
+  { kind: "result", points: ["Synthesis"], text: "Moments later, here's the real result. The agent synthesized a grounded answer with Venice, citing each source it used." },
   { kind: "result", scrollTo: "Multi-agent trace", points: ["Multi-agent trace"], text: "The multi-agent trace is real: a Planner splits the question, parallel Readers answer with Venice, a Citation-Matcher ranks relevance, and a Fact-checker verifies — each redelegated a strictly narrower budget over E.R.C. seventy-seven-ten." },
   { kind: "result", scrollTo: "Author payout plan", points: ["Author payout plan"], text: "And here's the payout: every cited author gets a relevance-weighted U.S.D.C. share. One click settles it on-chain with attestAndSplit — no relayer fee, no double pay." },
   { kind: "ext", url: BASESCAN, points: ["0x6f4c8d53"], text: "Payouts can also relay gaslessly through the 1Shot permissionless relayer on Base mainnet. Here's the real transaction — a type-four, E.I.P. seventy-seven-oh-two account upgrade, with gas paid in U.S.D.C." },
@@ -115,6 +117,7 @@ for (let i = 0; i < CUES.length; i++) {
   if (c.kind !== "ext") await page.addStyleTag({ content: HIDE }).catch(() => {});
   else { await sleep(2200); for (const t of ["Accept", "I Agree", "Got it", "Accept all"]) { await page.getByRole("button", { name: t }).first().click({ timeout: 800 }).catch(() => {}); } }
   if (c.scrollTo) { await page.getByText(c.scrollTo, { exact: false }).first().scrollIntoViewIfNeeded({ timeout: 4000 }).catch(() => {}); await sleep(500); }
+  if (c.expandSel) { await page.locator(c.expandSel).first().click({ timeout: 3000 }).catch(() => {}); await sleep(700); }
   await ensureCursor(page);
   let cur = { x: 640, y: 380 };
   await setCursor(page, cur.x, cur.y);
