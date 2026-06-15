@@ -25,14 +25,6 @@ const DUST: { top: string; left: string; size: number; vars: V }[] = Array.from(
   },
 }));
 
-// Foreground sheets fluttering over the desk (right side), for a cinemagraph feel.
-const FOREPAPERS: { top: string; right: string; w: number; h: number; vars: V }[] = [
-  { top: "30%", right: "30%", w: 30, h: 38, vars: { "--rot": "-14deg", "--dur": "7s", "--delay": "0s" } },
-  { top: "24%", right: "16%", w: 24, h: 31, vars: { "--rot": "10deg", "--dur": "9s", "--delay": "1.4s" } },
-  { top: "46%", right: "38%", w: 27, h: 34, vars: { "--rot": "6deg", "--dur": "8s", "--delay": "0.7s" } },
-  { top: "52%", right: "12%", w: 22, h: 28, vars: { "--rot": "-8deg", "--dur": "10s", "--delay": "2s" } },
-];
-
 export function RoomHero() {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -90,15 +82,6 @@ export function RoomHero() {
         className="absolute inset-x-0 bottom-0 h-56"
         style={{ background: "linear-gradient(to bottom, transparent, var(--paper) 92%)" }}
       />
-
-      {/* cinemagraph touch: a few sheets fluttering over the desk (right side) */}
-      {FOREPAPERS.map((p, i) => (
-        <span
-          key={`fp${i}`}
-          className="paper-float absolute rounded-[2px] border border-black/10 bg-[#fbf7ec] shadow-md"
-          style={{ top: p.top, right: p.right, width: p.w, height: p.h, ...p.vars } as React.CSSProperties}
-        />
-      ))}
     </div>
   );
 }
